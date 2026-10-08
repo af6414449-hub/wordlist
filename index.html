@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Wordlist — тренировка словарного запаса">
+    <meta name="author" content="Wordlist">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordlist</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0; padding: 0;
+            background: #ffffff;
+            color: #212121;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px; line-height: 1.5; height: 100%;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.78);
+            z-index: 0; pointer-events: none;
+        }
+
+        .stage {
+            position: relative; z-index: 1;
+            max-width: 1100px; margin: 0 auto;
+            min-height: 100vh; background: #ffffff;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+            display: flex; flex-direction: column;
+        }
+
+        /* ===== Шапка ===== */
+        .topbar {
+            height: 48px; flex: 0 0 48px;
+            background: #1b1c1d; color: rgba(255,255,255,0.9);
+            z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .topbar-inner {
+            height: 100%; padding: 0 1em 0 2em;
+            display: flex; align-items: center; gap: 0.5em;
+        }
+        .brand { display: flex; align-items: center; margin-right: 0.5em; cursor: pointer; }
+        .home-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 6px;
+            background: linear-gradient(135deg, #ffb300, #ff6f00);
+            color: #1b1c1d;
+        }
+        .home-icon svg { width: 18px; height: 18px; display: block; }
+
+        .levels { display: flex; align-items: center; gap: 0.4em; margin-left: 0.75em; }
+        .level {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 56px; height: 32px; padding: 0 0.9em;
+            border-radius: 4px; font-weight: 700; font-size: 14px;
+            letter-spacing: 0.5px; border: none; font-family: inherit;
+            cursor: pointer; transition: background 0.15s, color 0.15s, transform 0.1s;
+        }
+        .level.active { background: #e57373; color: #fff; }
+        .level.active:hover { background: #ef5350; }
+        .level.active:active { transform: scale(0.96); }
+        .level.disabled {
+            background: rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.35); cursor: not-allowed;
+        }
+
+        .train-slot { display: flex; align-items: center; gap: 0.75em; margin-left: 0.75em; }
+        .timer { color: rgba(255,255,255,0.75); font-size: 14px; white-space: nowrap; }
+        .timer b {
+            color: #fff; font-size: 16px; margin-left: 0.25em;
+            font-variant-numeric: tabular-nums;
+            display: inline-block; min-width: 3.2em; text-align: right;
+        }
+
+        .finish-btn {
+            background: #2ecc71; color: #fff; border: none; border-radius: 4px;
+            padding: 0.4em 1em; font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .finish-btn:hover { background: #27ae60; }
+        .finish-btn:active { transform: scale(0.97); }
+        .finish-btn.continue { background: #5dade2; }
+        .finish-btn.continue:hover { background: #3498db; }
+
+        .right { margin-left: auto; display: flex; align-items: center; gap: 0.75em; }
+        .lang-btn {
+            display: inline-flex; align-items: center; height: 48px; padding: 0 0.8em;
+            color: rgba(255,255,255,0.85); font-weight: 500;
+            background: transparent; border: none; cursor: pointer;
+            font-size: 14px; font-family: inherit;
+            transition: background 0.15s, color 0.15s;
+        }
+        .lang-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .lang-btn.active { background: rgba(255,255,255,0.15); color: #fff; }
+
+        /* ===== Контент ===== */
+        .wrapper {
+            flex: 1 1 auto; padding: 1em 1em 1em 2em;
+            display: flex; flex-direction: column; min-height: 0;
+        }
+        .view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+
+        /* ===== Быстрая тренировка ===== */
+        .quick-train {
+            margin-left: 2em; width: 220px; height: 220px;
+            border: none; border-radius: 6px; font-family: inherit;
+            font-size: 20px; font-weight: 700; color: #fff;
+            cursor: pointer; padding: 1em; text-align: center;
+            transition: background 0.15s, transform 0.1s, filter 0.15s;
+        }
+        .quick-train:hover { filter: brightness(1.08); }
+        .quick-train:active { transform: scale(0.97); }
+
+        /* ===== Экран тренировки ===== */
+        .train-screen {
+            display: flex; flex-direction: column; gap: 0.5em;
+            flex: 1 1 auto; min-height: 0;
+        }
+        .thumbs {
+            flex: 0 0 auto; display: flex; gap: 0.5em; padding: 0.5em;
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 4px;
+            overflow-x: auto; overflow-y: hidden;
+        }
+        .thumb {
+            flex: 0 0 auto; display: flex; flex-direction: column;
+            align-items: center; gap: 0.15em; cursor: pointer;
+        }
+        .thumb-img {
+            width: 56px; height: 44px; background: #ffffff;
+            border: 1px solid #bdbdbd; transition: border 0.15s, box-shadow 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; color: #555; text-align: center; padding: 0 2px;
+            overflow: hidden; line-height: 1.1;
+        }
+        .thumb.active .thumb-img {
+            border: 2px solid #e57373;
+            box-shadow: 0 0 0 2px rgba(229, 115, 115, 0.4);
+        }
+        .thumb-name {
+            background: #f5f5f5; border-radius: 3px; padding: 0 0.4em;
+            font-size: 10px; color: #212121; line-height: 1.4;
+            max-width: 64px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .train-area {
+            flex: 1 1 auto; min-height: 0;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1em; background: #909090;
+            border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;
+        }
+        .train-main {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 0.6em; min-height: 0;
+        }
+
+        .face-square {
+            width: min(46vh, 380px);
+            aspect-ratio: 1 / 0.75;
+            background: #ffffff;
+            border: 4px solid #ffffff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 0.75em;
+            font-size: 24px; font-weight: 500; color: #212121;
+            overflow: hidden; line-height: 1.15;
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .name-plate {
+            width: min(46vh, 380px); padding: 0.4em 1em;
+            background: #ffffff; border-radius: 8px; text-align: center;
+            font-size: clamp(20px, 4.2vh, 34px); font-weight: 500;
+            color: #212121; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .train-controls { display: flex; gap: 0.5em; }
+        .ctrl-btn {
+            width: 56px; height: 44px; border: none; border-radius: 4px;
+            background: #2f8fd6; color: #fff; font-size: 20px;
+            cursor: pointer; display: inline-flex; align-items: center;
+            justify-content: center; font-family: inherit;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .ctrl-btn:hover { background: #2679b6; }
+        .ctrl-btn:active { transform: scale(0.95); }
+
+        /* ===== Экран проверки ===== */
+        .check-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1.5em;
+            background: #909090; border: 1px solid #e0e0e0;
+            border-radius: 4px; overflow: auto;
+        }
+        .check-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0.75em; align-content: start;
+        }
+        .check-cell {
+            display: flex; flex-direction: column; gap: 0.25em; min-width: 0;
+        }
+
+        .check-img {
+            width: 100%; aspect-ratio: 1 / 0.75;
+            background: #ffffff; border: 1px solid #fff;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 0.4em;
+            font-size: 13px; color: #212121; font-weight: 500;
+            overflow: hidden; line-height: 1.15;
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .check-input {
+            width: 100%; height: 32px;
+            border: 1px solid #fff; border-radius: 3px;
+            background: #ffffff; font-family: inherit;
+            font-size: 13px; padding: 0 0.4em;
+            text-align: center; color: #212121; outline: none;
+        }
+        .check-input:focus { border-color: #2f8fd6; }
+
+        .check-cell.current .check-input {
+            background: #ffe600;
+            color: #000;
+            font-weight: 600;
+        }
+
+        .check-input.correct {
+            background: #2ecc71; color: #fff; font-weight: 600;
+            border-color: #27ae60;
+        }
+        .check-input.close {
+            background: #f39c12; color: #fff; font-weight: 600;
+            border-color: #d68910;
+        }
+        .check-input.wrong {
+            background: #e74c3c; color: #fff; font-weight: 600;
+            border-color: #c0392b;
+        }
+        .check-input:disabled { cursor: default; }
+
+        /* ===== Экран результатов ===== */
+        .results-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1em;
+            background: #909090;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: auto;
+            display: flex; flex-direction: column; gap: 0.75em;
+        }
+
+        .results-summary {
+            display: flex; gap: 1em; padding: 0.75em 1em;
+            background: #fff; border-radius: 4px;
+            align-items: center; flex-wrap: wrap;
+            font-size: 15px;
+        }
+        .results-summary .pill {
+            display: inline-flex; align-items: center; gap: 0.4em;
+            padding: 0.25em 0.75em; border-radius: 999px;
+            font-weight: 600;
+        }
+        .pill.green  { background: #d5f5e3; color: #1e8449; }
+        .pill.orange { background: #fdebd0; color: #b9770e; }
+        .pill.red    { background: #fadbd8; color: #a93226; }
+        .pill.total  { background: #eaecee; color: #212121; }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 14px;
+            table-layout: fixed;
+        }
+        .results-table th,
+        .results-table td {
+            width: 33.3333%;
+            padding: 0.5em 0.75em;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+        }
+        .results-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #555;
+        }
+        .results-table tr:last-child td { border-bottom: none; }
+
+        .results-table td.correct { background: #d5f5e3; color: #1e8449; font-weight: 600; }
+        .results-table td.close   { background: #fdebd0; color: #b9770e; font-weight: 600; }
+        .results-table td.wrong   { background: #fadbd8; color: #a93226; font-weight: 600; }
+        .results-table td.empty   { color: #999; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="stage">
+        <nav class="topbar">
+            <div class="topbar-inner">
+                <a href="#/home" class="brand" title="Home" id="homeBtn">
+                    <span class="home-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 3.2 2.5 11.2a1 1 0 0 0 .65 1.8H5v7a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1v-7h1.85a1 1 0 0 0 .65-1.8L12 3.2Z"/>
+                        </svg>
+                    </span>
+                </a>
+
+                <div class="levels" id="levelsNav"></div>
+
+                <div class="train-slot" id="trainSlot" style="display:none">
+                    <div class="timer" id="timerWrap">Осталось до конца: <b id="timerValue">1:00</b></div>
+                    <button class="finish-btn" id="finishBtn">Завершить</button>
+                </div>
+
+                <div class="right">
+                    <button class="lang-btn active" data-lang="en">English</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="wrapper">
+            <div id="view" class="view"></div>
+        </main>
+    </div>
+
+    <!-- База A1 -->
+    <script src="a1.js"></script>
+    <!-- Логика приложения -->
+    <script src="app.js"></script>
+</body>
+</html>
