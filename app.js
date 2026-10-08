@@ -38,7 +38,6 @@ let sessionWords = [];
 let userAnswers  = [];
 
 const view          = document.getElementById('view');
-const levelsNav     = document.getElementById('levelsNav');
 const trainSlot     = document.getElementById('trainSlot');
 const finishBtn     = document.getElementById('finishBtn');
 const timerWrap     = document.getElementById('timerWrap');
@@ -144,26 +143,7 @@ function pushHistory(entry) {
     saveHistory(list.slice(0, HISTORY_MAX));
 }
 
-/* ===== Уровни ===== */
-function renderLevels() {
-    levelsNav.innerHTML = levels.map(lvl => {
-        const cls   = lvl.enabled ? 'level active' : 'level disabled';
-        const attrs = lvl.enabled ? '' : 'disabled';
-        return `<button class="${cls}" data-level="${lvl.code}" ${attrs}>${lvl.code}</button>`;
-    }).join('');
-
-    levelsNav.querySelectorAll('.level.active').forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentLevel = btn.dataset.level;
-            renderLevels();
-            updateLevelCycleBtn();
-            if (screen === 'home') renderHome();
-        });
-    });
-
-    updateLevelCycleBtn();
-}
-
+/* ===== Уровень — одна кнопка ===== */
 function updateLevelCycleBtn() {
     levelCycleBtn.textContent = currentLevel;
 }
@@ -746,6 +726,6 @@ window.addEventListener('resize', () => {
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', () => {
     updateCheckCols();
-    renderLevels();
+    updateLevelCycleBtn();
     renderHome();
 });
