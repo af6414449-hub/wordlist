@@ -1,5 +1,5 @@
 /* Wordlist — логика приложения.
-   Зависит от a1.js (WORDS_A1) и a2.js (WORDS_A2). */
+   Зависит от a1.js (WORDS_A1), a2.js (WORDS_A2) и опционально b1.js (WORDS_B1). */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -19,7 +19,7 @@ let timerInterval  = null;
 const levels = [
     { code: 'A1', enabled: true  },
     { code: 'A2', enabled: true  },
-    { code: 'B1', enabled: false },
+    { code: 'B1', enabled: true  },   // включён
     { code: 'B2', enabled: false },
     { code: 'C1', enabled: false },
     { code: 'C2', enabled: false },
@@ -28,12 +28,16 @@ const levels = [
 const levelColors = {
     A1: '#e57373',   // красный
     A2: '#e6a23c',   // оранжевый
-    B1: '#e0e0e0', B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
+    B1: '#f5c518',   // жёлтый
+    B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
 };
 
+/* BANKS собираем безопасно: если файл b1.js не подключён — WORDS_B1 будет undefined,
+   и мы просто не добавим его в BANKS. */
 const BANKS = {
-    A1: WORDS_A1,
-    A2: WORDS_A2,
+    A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
+    A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
+    B1: typeof WORDS_B1 !== 'undefined' ? WORDS_B1 : null,
 };
 
 let sessionWords = [];
@@ -152,6 +156,12 @@ function updateLevelCycleBtn() {
     levelCycleBtn.textContent = currentLevel;
     const color = levelColors[currentLevel] || '#e57373';
     levelCycleBtn.style.background = color;
+    // если уровень без базы — приглушим цвет
+    if (!BANKS[currentLevel]) {
+        levelCycleBtn.style.opacity = '0.6';
+    } else {
+        levelCycleBtn.style.opacity = '1';
+    }
 }
 
 function cycleLevel() {
@@ -161,7 +171,19 @@ function cycleLevel() {
     const next = enabled[(idx + 1) % enabled.length];
     currentLevel = next;
     updateLevelCycleBtn();
-    if (screen === 'home') renderHome();
+
+    // Если мы на главной или в истории — просто перерисовать
+    if (screen === 'home')    { renderHome();    return; }
+    if (screen === 'history') { renderHistory(); return; }
+
+    // Если мы на экране результатов — пересчитать статистику для нового уровня
+    if (screen === 'results') {
+        // sessionWords/userAnswers относятся к предыдущему уровню.
+        // Пересчитывать их нет смысла — просто перерисовываем результаты
+        // на основе уже сохранённых ответов (они уже посчитаны).
+        renderResults();
+        return;
+    }
 }
 
 levelCycleBtn.addEventListener('click', cycleLevel);
@@ -219,18 +241,39 @@ function stopTimer() {
 /* ===== Главный экран ===== */
 function renderHome() {
     const color = levelColors[currentLevel] || '#e0e0e0';
+    const hasBank = !!BANKS[currentLevel];
+
     view.innerHTML = `
         <button class="quick-train" id="quickTrain" style="background:${color}">
             Быстрая тренировка
         </button>
+        ${hasBank ? '' : `
+            <p style="margin-left:2em;color:#a93226;font-size:14px;">
+                База для уровня ${currentLevel} ещё не подключена.
+            </p>
+        `}
     `;
-    document.getElementById('quickTrain').addEventListener('click', startSession);
+
+    const btn = document.getElementById('quickTrain');
+    btn.addEventListener('click', () => {
+        if (!BANKS[currentLevel]) {
+            alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+            return;
+        }
+        startSession();
+    });
+
     updateHeader();
 }
 
 /* ===== Старт сессии ===== */
 function startSession() {
-    const bank = BANKS[currentLevel] || [];
+    const bank = BANKS[currentLevel];
+    if (!bank || !bank.length) {
+        alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+        return;
+    }
+
     const prog = loadProgress(currentLevel);
     const learnedSet = new Set(prog.learned);
 
@@ -539,6 +582,10 @@ function commitProgress() {
 
 /* ===== Результаты ===== */
 function renderResults() {
+    // На экране результатов кнопка уровня активна.
+    // При смене уровня перерисовываем текущие ответы — просто пересчёт статистики
+    // для уже сохранённых ответов (уровень влияет только на заголовок и кнопку).
+
     let correct = 0, close = 0, wrong = 0;
 
     const rows = sessionWords.map((item, i) => {
@@ -567,7 +614,7 @@ function renderResults() {
     view.innerHTML = `
         <div class="results-area">
             <div class="results-summary">
-                <span class="pill total">Всего: ${total}</span>
+                <span class="pill total">Уровень ${currentLevel} — всего: ${total}</span>
                 <span class="pill green">Правильно: ${correct} (${pct(correct)}%)</span>
                 <span class="pill orange">Недочёты: ${close} (${pct(close)}%)</span>
                 <span class="pill red">Ошибки: ${wrong} (${pct(wrong)}%)</span>
