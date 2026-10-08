@@ -9,6 +9,7 @@ let currentPerson = 0;
 
 const TRAIN_SECONDS = 60;
 const SESSION_SIZE  = 20;      // 20 слов на сессию → 4 строки по 5 в проверке
+const CHECK_COLS    = 5;       // колонок в сетке проверки (для ↑/↓)
 
 let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
@@ -226,6 +227,19 @@ function renderTrain() {
         renderTrain();
     });
 
+    // Клик по большой карточке — вперёд (или завершение на последней)
+    const faceSquare = document.getElementById('faceSquare');
+    if (faceSquare) {
+        faceSquare.addEventListener('click', () => {
+            if (currentPerson < sessionWords.length - 1) {
+                currentPerson++;
+                renderTrain();
+            } else {
+                goToCheck();
+            }
+        });
+    }
+
     document.querySelectorAll('.thumb').forEach(t => {
         t.addEventListener('click', () => {
             currentPerson = Number(t.dataset.index);
@@ -244,6 +258,32 @@ function renderTrain() {
     }
 
     updateHeader();
+}
+
+/* ===== Навигация клавишами на экране тренировки ===== */
+function handleTrainKeys(e) {
+    if (screen !== 'train') return;
+
+    // Пропускаем, если пользователь что-то вводит в поле
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+
+    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (currentPerson < sessionWords.length - 1) {
+            currentPerson++;
+            renderTrain();
+        } else if (e.key === 'Enter') {
+            // Enter на последней — завершить запоминание
+            goToCheck();
+        }
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (currentPerson > 0) {
+            currentPerson--;
+            renderTrain();
+        }
+    }
 }
 
 /* ===== Переход в проверку ===== */
@@ -320,6 +360,22 @@ function renderCheck() {
                     e.preventDefault();
                     if (currentPerson > 0) {
                         currentPerson--;
+                        renderCheck();
+                        focusCurrentInput();
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const next = currentPerson + CHECK_COLS;
+                    if (next < sessionWords.length) {
+                        currentPerson = next;
+                        renderCheck();
+                        focusCurrentInput();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prev = currentPerson - CHECK_COLS;
+                    if (prev >= 0) {
+                        currentPerson = prev;
                         renderCheck();
                         focusCurrentInput();
                     }
@@ -446,6 +502,9 @@ finishBtn.addEventListener('click', () => {
         return;
     }
 });
+
+/* ===== Глобальные клавиши ===== */
+document.addEventListener('keydown', handleTrainKeys);
 
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', () => {
