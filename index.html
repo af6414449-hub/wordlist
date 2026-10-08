@@ -76,22 +76,19 @@
         }
         .home-icon svg { width: 18px; height: 18px; display: block; }
 
-        /* Уровни (полный ряд — на широких) */
+        /* ===== Уровни ===== */
         .levels {
             display: flex; align-items: center; gap: 0.35em;
             margin-left: 0.5em;
             flex-wrap: wrap;
         }
 
-        /* Уровни (одна кнопка-цикл — на узких) */
         .level-cycle {
             display: none;
             margin-left: 0.5em;
             flex: 0 0 auto;
         }
-        .level-cycle .level {
-            min-width: 44px;
-        }
+        .level-cycle .level { min-width: 44px; }
 
         .level {
             display: inline-flex; align-items: center; justify-content: center;
@@ -108,7 +105,17 @@
             color: rgba(255,255,255,0.35); cursor: not-allowed;
         }
 
-        .train-slot { display: flex; align-items: center; gap: 0.6em; margin-left: 0.5em; flex-wrap: wrap; }
+        /* На НЕ-домашнем экране — скрываем оба варианта уровней */
+        .topbar-inner.mode-train .levels,
+        .topbar-inner.mode-train .level-cycle {
+            display: none !important;
+        }
+
+        /* ===== Таймер и кнопка Завершить ===== */
+        .train-slot {
+            display: flex; align-items: center; gap: 0.6em;
+            margin-left: 0.5em; flex-wrap: wrap;
+        }
         .timer { color: rgba(255,255,255,0.75); font-size: 13px; white-space: nowrap; }
         .timer b {
             color: #fff; font-size: 15px; margin-left: 0.25em;
@@ -155,7 +162,7 @@
         .lang-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
         .lang-btn.active { background: rgba(255,255,255,0.15); color: #fff; }
 
-        /* ===== Адаптивность ===== */
+        /* ===== Адаптивность шапки ===== */
         @media (max-width: 720px) {
             .topbar-inner { padding: 0 0.5em 0 0.75em; gap: 0.25em; }
             .brand { margin-right: 0; }
@@ -169,7 +176,6 @@
             }
 
             .history-btn { height: 26px; padding: 0 0.55em; font-size: 11px; }
-
             .lang-btn { padding: 0 0.5em; height: 44px; font-size: 12px; }
 
             .timer { font-size: 11px; }
@@ -178,10 +184,10 @@
             .finish-btn { padding: 0.3em 0.65em; font-size: 12px; }
         }
 
-        /* УЗКИЕ ЭКРАНЫ: одна кнопка уровня + компактная шапка */
+        /* УЗКИЕ ЭКРАНЫ: показываем цикл вместо ряда */
         @media (max-width: 560px) {
-            .levels { display: none; }        /* скрыть ряд уровней */
-            .level-cycle { display: block; }  /* показать одну кнопку-цикл */
+            .topbar-inner.mode-home .levels { display: none; }
+            .topbar-inner.mode-home .level-cycle { display: block; }
 
             .topbar-inner { padding: 0 0.4em 0 0.6em; gap: 0.2em; }
 
@@ -216,7 +222,6 @@
             flex: 0 0 auto; display: flex; gap: 0.5em; padding: 0.5em;
             background: #fff; border: 1px solid #e0e0e0; border-radius: 4px;
             overflow-x: auto; overflow-y: hidden;
-            /* без scroll-behavior, чтобы не «прыгало» после ручной прокрутки */
         }
         .thumb {
             flex: 0 0 auto; display: flex; flex-direction: column;
@@ -341,7 +346,6 @@
         .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 600; border-color: #c0392b; }
         .check-input:disabled { cursor: default; }
 
-        /* УЗКИЕ ЭКРАНЫ: 3 колонки в проверке */
         @media (max-width: 560px) {
             .check-area { padding: 0.75em; }
             .check-grid {
@@ -379,7 +383,6 @@
         .pill.red    { background: #fadbd8; color: #a93226; }
         .pill.total  { background: #eaecee; color: #212121; }
 
-        /* УЗКИЕ ЭКРАНЫ: компактные плашки */
         @media (max-width: 560px) {
             .results-summary {
                 gap: 0.4em;
@@ -471,7 +474,7 @@
 <body>
     <div class="stage">
         <nav class="topbar">
-            <div class="topbar-inner">
+            <div class="topbar-inner" id="topbarInner">
                 <a href="#/home" class="brand" title="Home" id="homeBtn">
                     <span class="home-icon">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -484,7 +487,7 @@
                 <div class="levels" id="levelsNav"></div>
 
                 <!-- Одна кнопка уровня (узкие экраны) -->
-                <div class="level-cycle" id="levelCycle">
+                <div class="level-cycle">
                     <button class="level active" id="levelCycleBtn">A1</button>
                 </div>
 
