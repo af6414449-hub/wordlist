@@ -21,7 +21,6 @@
             font-size: 14px; line-height: 1.5; height: 100%;
         }
 
-        /* Запрет выделения по умолчанию — чтобы двойной тап ничего не выделял */
         body {
             user-select: none;
             -webkit-user-select: none;
@@ -29,11 +28,7 @@
             -ms-user-select: none;
         }
 
-        /* Возвращаем выделение там, где оно реально нужно */
-        input,
-        textarea,
-        .check-input,
-        .results-table td {
+        input, textarea, .check-input, .results-table td {
             user-select: text;
             -webkit-user-select: text;
         }
@@ -122,6 +117,22 @@
         .finish-btn.continue:hover { background: #3498db; }
 
         .right { margin-left: auto; display: flex; align-items: center; gap: 0.4em; flex: 0 0 auto; }
+
+        /* Кнопка «Результаты» */
+        .history-btn {
+            display: inline-flex; align-items: center; gap: 0.35em;
+            height: 30px; padding: 0 0.8em;
+            background: rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.9);
+            border: none; border-radius: 4px;
+            font-size: 13px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+        .history-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+        .history-btn.active { background: rgba(255,255,255,0.25); color: #fff; }
+
         .lang-btn {
             display: inline-flex; align-items: center; height: 48px; padding: 0 0.8em;
             color: rgba(255,255,255,0.85); font-weight: 500;
@@ -133,43 +144,35 @@
         .lang-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
         .lang-btn.active { background: rgba(255,255,255,0.15); color: #fff; }
 
-        /* ===== Адаптивность шапки ===== */
+        /* ===== Адаптивность ===== */
         @media (max-width: 720px) {
-            .topbar-inner {
-                padding: 0 0.5em 0 0.75em;
-                gap: 0.25em;
-            }
+            .topbar-inner { padding: 0 0.5em 0 0.75em; gap: 0.25em; }
             .brand { margin-right: 0; }
             .home-icon { width: 28px; height: 28px; }
             .home-icon svg { width: 16px; height: 16px; }
 
             .levels { gap: 0.25em; margin-left: 0.25em; }
             .level {
-                min-width: 38px;
-                height: 26px;
-                padding: 0 0.45em;
-                font-size: 11px;
-                letter-spacing: 0.3px;
+                min-width: 38px; height: 26px;
+                padding: 0 0.45em; font-size: 11px; letter-spacing: 0.3px;
             }
 
-            .lang-btn {
-                padding: 0 0.5em;
-                height: 44px;
-                font-size: 12px;
+            .history-btn {
+                height: 26px; padding: 0 0.55em; font-size: 11px;
             }
+
+            .lang-btn { padding: 0 0.5em; height: 44px; font-size: 12px; }
 
             .timer { font-size: 11px; }
             .timer b { font-size: 13px; min-width: 2.6em; }
 
-            .finish-btn {
-                padding: 0.3em 0.65em;
-                font-size: 12px;
-            }
+            .finish-btn { padding: 0.3em 0.65em; font-size: 12px; }
         }
 
         @media (max-width: 420px) {
             .level { min-width: 34px; height: 24px; font-size: 10px; padding: 0 0.35em; }
             .lang-btn { font-size: 11px; padding: 0 0.4em; }
+            .history-btn { font-size: 10px; padding: 0 0.45em; }
         }
 
         /* ===== Контент ===== */
@@ -234,7 +237,6 @@
             justify-content: center; gap: 0.6em; min-height: 0;
         }
 
-        /* Квадрат: крупнее текст на больших экранах */
         .face-square {
             width: min(46vh, 380px);
             aspect-ratio: 1 / 0.75;
@@ -253,14 +255,12 @@
             cursor: pointer;
         }
 
-        /* Плашка с английским словом — БЕЗ переноса, авто-уменьшение шрифта */
         .name-plate {
             width: min(46vh, 380px); padding: 0.4em 1em;
             background: #ffffff; border-radius: 8px; text-align: center;
             font-size: clamp(22px, 2.4vw + 1vh, 38px);
             font-weight: 500;
             color: #212121; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-
             white-space: nowrap;
             overflow: hidden;
             text-overflow: clip;
@@ -389,10 +389,71 @@
         }
         .results-table tr:last-child td { border-bottom: none; }
 
+        /* Цвет — ТОЛЬКО в столбце «Ваш ответ» */
         .results-table td.correct { background: #d5f5e3; color: #1e8449; font-weight: 600; }
         .results-table td.close   { background: #fdebd0; color: #b9770e; font-weight: 600; }
         .results-table td.wrong   { background: #fadbd8; color: #a93226; font-weight: 600; }
         .results-table td.empty   { color: #999; font-style: italic; }
+
+        /* Правильный ответ — только тёмный текст, без фона */
+        .results-table td.answer-ok { color: #212121; }
+
+        /* ===== Экран истории ===== */
+        .history-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1em;
+            background: #909090;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            overflow: auto;
+            display: flex; flex-direction: column; gap: 0.75em;
+        }
+
+        .history-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.75em 1em;
+            background: #fff; border-radius: 4px;
+            font-size: 16px; font-weight: 600;
+            flex-wrap: wrap; gap: 0.5em;
+        }
+
+        .history-empty {
+            padding: 2em 1em;
+            background: #fff; border-radius: 4px;
+            text-align: center; color: #777;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 13px;
+            table-layout: fixed;
+        }
+        .history-table th,
+        .history-table td {
+            padding: 0.5em 0.6em;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+        }
+        .history-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #555;
+        }
+        .history-table tr:last-child td { border-bottom: none; }
+
+        .history-table .col-date { width: 34%; }
+        .history-table .col-num  { width: 22%; }
+        .history-table .col-pct  { width: 22%; }
+
+        .history-table td.ok    { color: #1e8449; font-weight: 600; }
+        .history-table td.close { color: #b9770e; font-weight: 600; }
+        .history-table td.wrong { color: #a93226; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -415,6 +476,7 @@
                 </div>
 
                 <div class="right">
+                    <button class="history-btn" id="historyBtn">Результаты</button>
                     <button class="lang-btn active" data-lang="en">English</button>
                 </div>
             </div>
