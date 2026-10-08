@@ -3,13 +3,14 @@
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
-let screen = 'home';           // 'home' | 'train' | 'check' | 'results'
+let screen = 'home';           // 'home' | 'train' | 'check' | 'results' | 'history'
 let checkPhase = 'input';      // 'input' | 'result'
 let currentPerson = 0;
 
 const TRAIN_SECONDS = 60;
-const SESSION_SIZE  = 20;      // 20 слов на сессию → 4 строки по 5 в проверке
-const CHECK_COLS    = 5;       // колонок в сетке проверки (для ↑/↓)
+const SESSION_SIZE  = 20;
+const CHECK_COLS    = 5;
+const HISTORY_MAX   = 20;      // хранить 20 последних попыток
 
 let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
@@ -41,6 +42,7 @@ const trainSlot  = document.getElementById('trainSlot');
 const finishBtn  = document.getElementById('finishBtn');
 const timerWrap  = document.getElementById('timerWrap');
 const timerValue = document.getElementById('timerValue');
+const historyBtn = document.getElementById('historyBtn');
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -89,6 +91,54 @@ function evaluate(userAnswer, correctAnswer) {
     return dist <= allowed ? 'close' : 'wrong';
 }
 
+/* ===== Прогресс (localStorage) ===== */
+function progressKey(level) { return 'wordlist_progress_' + level; }
+
+function loadProgress(level) {
+    try {
+        const raw = localStorage.getItem(progressKey(level));
+        if (!raw) return { learned: [] };
+        const obj = JSON.parse(raw);
+        return { learned: Array.isArray(obj.learned) ? obj.learned : [] };
+    } catch (_) {
+        return { learned: [] };
+    }
+}
+
+function saveProgress(level, progress) {
+    try {
+        localStorage.setItem(progressKey(level), JSON.stringify(progress));
+    } catch (_) {}
+}
+
+function resetProgress(level) {
+    try { localStorage.removeItem(progressKey(level)); } catch (_) {}
+}
+
+/* ===== История (localStorage) ===== */
+function loadHistory() {
+    try {
+        const raw = localStorage.getItem('wordlist_history');
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function saveHistory(list) {
+    try {
+        localStorage.setItem('wordlist_history', JSON.stringify(list.slice(0, HISTORY_MAX)));
+    } catch (_) {}
+}
+
+function pushHistory(entry) {
+    const list = loadHistory();
+    list.unshift(entry);
+    saveHistory(list.slice(0, HISTORY_MAX));
+}
+
 /* ===== Уровни ===== */
 function renderLevels() {
     levelsNav.innerHTML = levels.map(lvl => {
@@ -108,7 +158,10 @@ function renderLevels() {
 
 /* ===== Шапка ===== */
 function updateHeader() {
-    if (screen === 'home') {
+    // Кнопка «Результаты» активна на экране истории
+    historyBtn.classList.toggle('active', screen === 'history');
+
+    if (screen === 'home' || screen === 'history') {
         levelsNav.style.display = 'flex';
         trainSlot.style.display = 'none';
         return;
@@ -169,10 +222,22 @@ function renderHome() {
     updateHeader();
 }
 
-/* ===== Старт сессии ===== */
+/* ===== Старт сессии с учётом прогресса ===== */
 function startSession() {
-    const bank = BANKS[currentLevel] || [];
-    const pool = shuffle(bank);
+    const bank  = BANKS[currentLevel] || [];
+    const prog  = loadProgress(currentLevel);
+    const learnedSet = new Set(prog.learned);
+
+    // Слова, которые ещё не выучены
+    let fresh = bank.filter(w => !learnedSet.has(w.en));
+
+    // Если новых не хватает на полную сессию — обнуляем прогресс
+    if (fresh.length < SESSION_SIZE) {
+        resetProgress(currentLevel);
+        fresh = bank.slice();
+    }
+
+    const pool = shuffle(fresh);
     sessionWords = pool.slice(0, SESSION_SIZE);
     userAnswers  = sessionWords.map(() => '');
     currentPerson = 0;
@@ -209,9 +274,7 @@ function renderTrain() {
         </div>
     `;
 
-    // Авто-уменьшение размера значения (квадрат)
     fitFontSize(document.getElementById('faceSquare'), 40, 14);
-    // Авто-уменьшение размера английского слова (плашка) — без переноса
     fitFontSize(document.getElementById('namePlate'), 38, 12);
 
     document.getElementById('btnFirst').addEventListener('click', () => {
@@ -295,11 +358,7 @@ function goToCheck() {
     renderCheck();
 }
 
-/* ===== Экран проверки =====
-   ВАЖНО: при навигации клавишами мы НЕ перерисовываем всю сетку,
-   а просто перемещаем фокус и подсветку — иначе фокус теряется
-   и стрелки "не работают". */
-
+/* ===== Экран проверки ===== */
 function renderCheck() {
     const cellsHtml = sessionWords.map((item, i) => {
         const answer = userAnswers[i] || '';
@@ -359,8 +418,6 @@ function renderCheck() {
     updateHeader();
 }
 
-/* Отдельный обработчик клавиш в проверке — двигает фокус,
-   НЕ перерисовывая сетку (иначе фокус теряется). */
 function handleCheckKey(e) {
     if (checkPhase !== 'input') return;
 
@@ -414,6 +471,22 @@ function updateCheckHighlight() {
     });
 }
 
+/* ===== Сохранение прогресса после проверки ===== */
+function commitProgress() {
+    const prog = loadProgress(currentLevel);
+    const learnedSet = new Set(prog.learned);
+
+    sessionWords.forEach((item, i) => {
+        const verdict = evaluate(userAnswers[i] || '', item.en);
+        if (verdict === 'correct') {
+            learnedSet.add(item.en);
+        }
+    });
+
+    prog.learned = Array.from(learnedSet);
+    saveProgress(currentLevel, prog);
+}
+
 /* ===== Результаты ===== */
 function renderResults() {
     let correct = 0, close = 0, wrong = 0;
@@ -433,7 +506,7 @@ function renderResults() {
             <tr>
                 <td>${item.ru}</td>
                 <td class="${userCls}">${displayUser}</td>
-                <td class="${verdict}">${item.en} <span style="opacity:0.7;font-size:0.9em">(${item.pos})</span></td>
+                <td class="answer-ok">${item.en} <span style="opacity:0.7;font-size:0.9em">(${item.pos})</span></td>
             </tr>
         `;
     }).join('');
@@ -466,6 +539,57 @@ function renderResults() {
     updateHeader();
 }
 
+/* ===== Экран истории ===== */
+function renderHistory() {
+    const history = loadHistory();
+
+    let body = '';
+    if (!history.length) {
+        body = `<div class="history-empty">Пока нет ни одной попытки.</div>`;
+    } else {
+        const rows = history.map(rec => {
+            const total = rec.total || 0;
+            const pct = (n) => total ? Math.round(n / total * 100) : 0;
+            return `
+                <tr>
+                    <td>${rec.date}</td>
+                    <td class="ok">${rec.correct} (${pct(rec.correct)}%)</td>
+                    <td class="close">${rec.close} (${pct(rec.close)}%)</td>
+                    <td class="wrong">${rec.wrong} (${pct(rec.wrong)}%)</td>
+                </tr>
+            `;
+        }).join('');
+
+        body = `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th class="col-date">Дата и время</th>
+                        <th class="col-num">Правильно</th>
+                        <th class="col-num">Недочёты</th>
+                        <th class="col-num">Ошибки</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }
+
+    view.innerHTML = `
+        <div class="history-area">
+            <div class="history-header">
+                <span>Последние ${HISTORY_MAX} попыток</span>
+                <span style="font-weight:400;color:#777;font-size:13px">
+                    Всего сохранено: ${history.length}
+                </span>
+            </div>
+            ${body}
+        </div>
+    `;
+
+    updateHeader();
+}
+
 /* ===== Авто-уменьшение шрифта ===== */
 function fitFontSize(el, max, min) {
     if (!el) return;
@@ -491,6 +615,18 @@ document.getElementById('homeBtn').addEventListener('click', (e) => {
     renderHome();
 });
 
+/* ===== Кнопка «Результаты» ===== */
+historyBtn.addEventListener('click', () => {
+    if (screen === 'history') {
+        screen = 'home';
+        renderHome();
+    } else {
+        stopTimer();
+        screen = 'history';
+        renderHistory();
+    }
+});
+
 /* ===== Завершить / Продолжить ===== */
 finishBtn.addEventListener('click', () => {
     if (screen === 'train') { goToCheck(); return; }
@@ -502,6 +638,28 @@ finishBtn.addEventListener('click', () => {
     }
 
     if (screen === 'check' && checkPhase === 'result') {
+        // Фиксируем прогресс и пишем запись в историю
+        commitProgress();
+
+        // Считаем статистику
+        let correct = 0, close = 0, wrong = 0;
+        sessionWords.forEach((item, i) => {
+            const v = evaluate(userAnswers[i] || '', item.en);
+            if (v === 'correct') correct++;
+            else if (v === 'close') close++;
+            else wrong++;
+        });
+        const now = new Date();
+        const dateStr = now.toLocaleString('ru-RU', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        pushHistory({
+            date: dateStr,
+            correct, close, wrong,
+            total: sessionWords.length
+        });
+
         screen = 'results';
         renderResults();
         return;
