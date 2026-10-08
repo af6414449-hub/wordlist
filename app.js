@@ -28,7 +28,6 @@ const levelColors = {
     A2: '#e0e0e0', B1: '#e0e0e0', B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
 };
 
-/* Базы по уровням. Пока — только A1. */
 const BANKS = {
     A1: WORDS_A1,
 };
@@ -199,7 +198,7 @@ function renderTrain() {
             <div class="train-area">
                 <div class="train-main">
                     <div class="face-square" id="faceSquare">${w.ru}</div>
-                    <div class="name-plate">${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span></div>
+                    <div class="name-plate" id="namePlate">${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span></div>
                     <div class="train-controls">
                         <button class="ctrl-btn" id="btnFirst">⏮</button>
                         <button class="ctrl-btn" id="btnPrev">◀</button>
@@ -210,7 +209,10 @@ function renderTrain() {
         </div>
     `;
 
+    // Авто-уменьшение размера значения (квадрат)
     fitFontSize(document.getElementById('faceSquare'), 40, 14);
+    // Авто-уменьшение размера английского слова (плашка) — без переноса
+    fitFontSize(document.getElementById('namePlate'), 38, 12);
 
     document.getElementById('btnFirst').addEventListener('click', () => {
         currentPerson = 0; renderTrain();
@@ -227,7 +229,6 @@ function renderTrain() {
         renderTrain();
     });
 
-    // Клик по большой карточке — вперёд (или завершение на последней)
     const faceSquare = document.getElementById('faceSquare');
     if (faceSquare) {
         faceSquare.addEventListener('click', () => {
@@ -247,7 +248,6 @@ function renderTrain() {
         });
     });
 
-    // Прокрутить ленту так, чтобы активная карточка была видна
     const activeThumb = document.querySelector('.thumb.active');
     if (activeThumb) {
         activeThumb.scrollIntoView({
@@ -264,7 +264,6 @@ function renderTrain() {
 function handleTrainKeys(e) {
     if (screen !== 'train') return;
 
-    // Пропускаем, если пользователь что-то вводит в поле
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
 
@@ -274,7 +273,6 @@ function handleTrainKeys(e) {
             currentPerson++;
             renderTrain();
         } else if (e.key === 'Enter') {
-            // Enter на последней — завершить запоминание
             goToCheck();
         }
     } else if (e.key === 'ArrowLeft') {
@@ -297,7 +295,11 @@ function goToCheck() {
     renderCheck();
 }
 
-/* ===== Экран проверки ===== */
+/* ===== Экран проверки =====
+   ВАЖНО: при навигации клавишами мы НЕ перерисовываем всю сетку,
+   а просто перемещаем фокус и подсветку — иначе фокус теряется
+   и стрелки "не работают". */
+
 function renderCheck() {
     const cellsHtml = sessionWords.map((item, i) => {
         const answer = userAnswers[i] || '';
@@ -348,39 +350,7 @@ function renderCheck() {
                 updateCheckHighlight();
             });
 
-            inp.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === 'ArrowRight') {
-                    e.preventDefault();
-                    if (currentPerson < sessionWords.length - 1) {
-                        currentPerson++;
-                        renderCheck();
-                        focusCurrentInput();
-                    }
-                } else if (e.key === 'ArrowLeft') {
-                    e.preventDefault();
-                    if (currentPerson > 0) {
-                        currentPerson--;
-                        renderCheck();
-                        focusCurrentInput();
-                    }
-                } else if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    const next = currentPerson + CHECK_COLS;
-                    if (next < sessionWords.length) {
-                        currentPerson = next;
-                        renderCheck();
-                        focusCurrentInput();
-                    }
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    const prev = currentPerson - CHECK_COLS;
-                    if (prev >= 0) {
-                        currentPerson = prev;
-                        renderCheck();
-                        focusCurrentInput();
-                    }
-                }
-            });
+            inp.addEventListener('keydown', handleCheckKey);
         });
 
         focusCurrentInput();
@@ -389,12 +359,52 @@ function renderCheck() {
     updateHeader();
 }
 
+/* Отдельный обработчик клавиш в проверке — двигает фокус,
+   НЕ перерисовывая сетку (иначе фокус теряется). */
+function handleCheckKey(e) {
+    if (checkPhase !== 'input') return;
+
+    let next = null;
+
+    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        next = currentPerson + 1;
+    } else if (e.key === 'ArrowLeft') {
+        next = currentPerson - 1;
+    } else if (e.key === 'ArrowDown') {
+        next = currentPerson + CHECK_COLS;
+    } else if (e.key === 'ArrowUp') {
+        next = currentPerson - CHECK_COLS;
+    } else {
+        return;
+    }
+
+    e.preventDefault();
+
+    if (next < 0 || next >= sessionWords.length) return;
+
+    currentPerson = next;
+    updateCheckHighlight();
+    focusCurrentInput();
+    scrollCurrentInputIntoView();
+}
+
 function focusCurrentInput() {
     const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
     if (el) {
         el.focus();
         const val = el.value;
-        el.setSelectionRange(val.length, val.length);
+        try { el.setSelectionRange(val.length, val.length); } catch(_) {}
+    }
+}
+
+function scrollCurrentInputIntoView() {
+    const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
+    if (el) {
+        el.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+        });
     }
 }
 
@@ -458,13 +468,14 @@ function renderResults() {
 
 /* ===== Авто-уменьшение шрифта ===== */
 function fitFontSize(el, max, min) {
+    if (!el) return;
     let size = max;
     el.style.fontSize = size + 'px';
     let guard = 0;
     while (
         size > min &&
         (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
-        guard < 60
+        guard < 80
     ) {
         size -= 1;
         el.style.fontSize = size + 'px';
