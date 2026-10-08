@@ -233,6 +233,16 @@ function renderTrain() {
         });
     });
 
+    // Прокрутить ленту так, чтобы активная карточка была видна
+    const activeThumb = document.querySelector('.thumb.active');
+    if (activeThumb) {
+        activeThumb.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+        });
+    }
+
     updateHeader();
 }
 
