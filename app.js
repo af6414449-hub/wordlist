@@ -3,16 +3,14 @@
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
-let screen = 'home';           // 'home' | 'train' | 'check' | 'results' | 'history'
-let checkPhase = 'input';      // 'input' | 'result'
+let screen = 'home';
+let checkPhase = 'input';
 let currentPerson = 0;
 
 const TRAIN_SECONDS = 60;
 const SESSION_SIZE  = 20;
 const HISTORY_MAX   = 20;
 
-/* Колонок в проверке: 5 обычно, 3 на узких экранах.
-   Значение обновляется динамически. */
 let CHECK_COLS = 5;
 
 let timerRemaining = TRAIN_SECONDS;
@@ -39,14 +37,15 @@ const BANKS = {
 let sessionWords = [];
 let userAnswers  = [];
 
-const view       = document.getElementById('view');
-const levelsNav  = document.getElementById('levelsNav');
-const trainSlot  = document.getElementById('trainSlot');
-const finishBtn  = document.getElementById('finishBtn');
-const timerWrap  = document.getElementById('timerWrap');
-const timerValue = document.getElementById('timerValue');
-const historyBtn = document.getElementById('historyBtn');
+const view          = document.getElementById('view');
+const levelsNav     = document.getElementById('levelsNav');
+const trainSlot     = document.getElementById('trainSlot');
+const finishBtn     = document.getElementById('finishBtn');
+const timerWrap     = document.getElementById('timerWrap');
+const timerValue    = document.getElementById('timerValue');
+const historyBtn    = document.getElementById('historyBtn');
 const levelCycleBtn = document.getElementById('levelCycleBtn');
+const topbarInner   = document.querySelector('.topbar-inner');
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -95,7 +94,6 @@ function evaluate(userAnswer, correctAnswer) {
     return dist <= allowed ? 'close' : 'wrong';
 }
 
-/* ===== Адаптивный CHECK_COLS ===== */
 function updateCheckCols() {
     CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
 }
@@ -115,9 +113,7 @@ function loadProgress(level) {
 }
 
 function saveProgress(level, progress) {
-    try {
-        localStorage.setItem(progressKey(level), JSON.stringify(progress));
-    } catch (_) {}
+    try { localStorage.setItem(progressKey(level), JSON.stringify(progress)); } catch (_) {}
 }
 
 function resetProgress(level) {
@@ -172,7 +168,6 @@ function updateLevelCycleBtn() {
     levelCycleBtn.textContent = currentLevel;
 }
 
-/* Кнопка-цикл: переключает только между доступными уровнями */
 function cycleLevel() {
     const enabled = levels.filter(l => l.enabled).map(l => l.code);
     if (!enabled.length) return;
@@ -185,18 +180,20 @@ function cycleLevel() {
 
 levelCycleBtn.addEventListener('click', cycleLevel);
 
-/* ===== Шапка ===== */
+/* ===== Шапка: управляем ТОЛЬКО классами, без display =====
+   CSS сам решает, что показать на широких/узких. */
+
 function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history');
 
-    if (screen === 'home' || screen === 'history') {
-        levelsNav.style.display = 'flex';
-        trainSlot.style.display = 'none';
-        return;
-    }
-    levelsNav.style.display = 'none';
-    trainSlot.style.display = 'flex';
+    // Классы режима на inner
+    topbarInner.classList.toggle('mode-home',    screen === 'home' || screen === 'history');
+    topbarInner.classList.toggle('mode-train',   screen === 'train' || screen === 'check' || screen === 'results');
 
+    // Показываем/скрываем слот таймера+кнопки
+    trainSlot.style.display = (screen === 'train' || screen === 'check' || screen === 'results') ? 'flex' : 'none';
+
+    // Таймер — только на тренировке
     const showTimer = (screen === 'train');
     timerWrap.style.display = showTimer ? '' : 'none';
 
@@ -250,7 +247,7 @@ function renderHome() {
     updateHeader();
 }
 
-/* ===== Старт сессии с учётом прогресса ===== */
+/* ===== Старт сессии ===== */
 function startSession() {
     const bank = BANKS[currentLevel] || [];
     const prog = loadProgress(currentLevel);
@@ -271,96 +268,126 @@ function startSession() {
     startTimer();
 }
 
-/* ===== Экран тренировки ===== */
-function renderTrain() {
-    const w = sessionWords[currentPerson];
+/* ===== Лента миниатюр: рендерим ОДИН раз, потом только класс .active ===== */
 
-    const thumbsHtml = sessionWords.map((item, i) => `
+function buildThumbsHTML() {
+    return sessionWords.map((item, i) => `
         <div class="thumb${i === currentPerson ? ' active' : ''}" data-index="${i}">
             <div class="thumb-img">${item.ru}</div>
             <div class="thumb-name">${item.en}</div>
         </div>
     `).join('');
+}
 
-    view.innerHTML = `
-        <div class="train-screen">
-            <div class="thumbs" id="thumbsBar">${thumbsHtml}</div>
-            <div class="train-area">
-                <div class="train-main">
-                    <div class="face-square" id="faceSquare">${w.ru}</div>
-                    <div class="name-plate" id="namePlate">${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span></div>
-                    <div class="train-controls">
-                        <button class="ctrl-btn" id="btnFirst">⏮</button>
-                        <button class="ctrl-btn" id="btnPrev">◀</button>
-                        <button class="ctrl-btn" id="btnNext">▶</button>
+function updateThumbsActive() {
+    document.querySelectorAll('.thumbs .thumb').forEach(el => {
+        el.classList.toggle('active', Number(el.dataset.index) === currentPerson);
+    });
+}
+
+function ensureThumbVisible() {
+    const bar = document.getElementById('thumbsBar');
+    if (!bar) return;
+    const active = bar.querySelector('.thumb.active');
+    if (!active) return;
+
+    const barRect = bar.getBoundingClientRect();
+    const thumbRect = active.getBoundingClientRect();
+
+    const outLeft  = thumbRect.left  < barRect.left;
+    const outRight = thumbRect.right > barRect.right;
+
+    if (outLeft || outRight) {
+        const target = active.offsetLeft
+            - (bar.clientWidth - active.clientWidth) / 2;
+        bar.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    }
+}
+
+/* ===== Экран тренировки ===== */
+function renderTrain() {
+    const w = sessionWords[currentPerson];
+
+    // Если лента ещё не создана (новая сессия) — строим её
+    // Иначе — просто обновляем активный класс и центральную карточку
+    let thumbsBar = document.getElementById('thumbsBar');
+
+    if (!thumbsBar) {
+        // Первый рендер этой сессии
+        view.innerHTML = `
+            <div class="train-screen">
+                <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
+                <div class="train-area">
+                    <div class="train-main">
+                        <div class="face-square" id="faceSquare">${w.ru}</div>
+                        <div class="name-plate" id="namePlate"></div>
+                        <div class="train-controls">
+                            <button class="ctrl-btn" id="btnFirst">⏮</button>
+                            <button class="ctrl-btn" id="btnPrev">◀</button>
+                            <button class="ctrl-btn" id="btnNext">▶</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
-    fitFontSize(document.getElementById('faceSquare'), 40, 14);
-    fitFontSize(document.getElementById('namePlate'), 38, 12);
+        // Делегированный обработчик кликов по миниатюрам
+        thumbsBar.addEventListener('click', (e) => {
+            const t = e.target.closest('.thumb');
+            if (!t) return;
+            currentPerson = Number(t.dataset.index);
+            updateTrainCard();
+        });
 
-    document.getElementById('btnFirst').addEventListener('click', () => {
-        currentPerson = 0; renderTrain();
-    });
-    document.getElementById('btnPrev').addEventListener('click', () => {
-        currentPerson = Math.max(0, currentPerson - 1); renderTrain();
-    });
-    document.getElementById('btnNext').addEventListener('click', () => {
-        if (currentPerson >= sessionWords.length - 1) {
-            goToCheck();
-            return;
-        }
-        currentPerson++;
-        renderTrain();
-    });
+        document.getElementById('btnFirst').addEventListener('click', () => {
+            currentPerson = 0; updateTrainCard();
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => {
+            currentPerson = Math.max(0, currentPerson - 1); updateTrainCard();
+        });
+        document.getElementById('btnNext').addEventListener('click', () => {
+            if (currentPerson >= sessionWords.length - 1) {
+                goToCheck();
+                return;
+            }
+            currentPerson++;
+            updateTrainCard();
+        });
 
-    const faceSquare = document.getElementById('faceSquare');
-    if (faceSquare) {
+        const faceSquare = document.getElementById('faceSquare');
         faceSquare.addEventListener('click', () => {
             if (currentPerson < sessionWords.length - 1) {
                 currentPerson++;
-                renderTrain();
+                updateTrainCard();
             } else {
                 goToCheck();
             }
         });
     }
 
-    document.querySelectorAll('.thumb').forEach(t => {
-        t.addEventListener('click', () => {
-            currentPerson = Number(t.dataset.index);
-            renderTrain();
-        });
-    });
-
-    /* НЕ сбрасываем позицию скролла в начало.
-       Прокручиваем ТОЛЬКО если активная карточка вне видимой области. */
-    const thumbsBar = document.getElementById('thumbsBar');
-    const activeThumb = thumbsBar.querySelector('.thumb.active');
-    if (activeThumb && thumbsBar) {
-        const barRect = thumbsBar.getBoundingClientRect();
-        const thumbRect = activeThumb.getBoundingClientRect();
-
-        const outLeft  = thumbRect.left  < barRect.left;
-        const outRight = thumbRect.right > barRect.right;
-
-        if (outLeft || outRight) {
-            const target = activeThumb.offsetLeft
-                - (thumbsBar.clientWidth - activeThumb.clientWidth) / 2;
-            thumbsBar.scrollTo({
-                left: Math.max(0, target),
-                behavior: 'smooth'
-            });
-        }
-    }
-
+    updateTrainCard();
     updateHeader();
 }
 
-/* ===== Навигация клавишами на экране тренировки ===== */
+/* Обновляет центральную карточку, активный класс и скролл — БЕЗ пересоздания ленты */
+function updateTrainCard() {
+    const w = sessionWords[currentPerson];
+
+    const fs = document.getElementById('faceSquare');
+    const np = document.getElementById('namePlate');
+    if (!fs || !np) return;
+
+    fs.textContent = w.ru;
+    np.innerHTML = `${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span>`;
+
+    fitFontSize(fs, 40, 14);
+    fitFontSize(np, 38, 12);
+
+    updateThumbsActive();
+    ensureThumbVisible();
+}
+
+/* ===== Навигация клавишами на тренировке ===== */
 function handleTrainKeys(e) {
     if (screen !== 'train') return;
 
@@ -371,7 +398,7 @@ function handleTrainKeys(e) {
         e.preventDefault();
         if (currentPerson < sessionWords.length - 1) {
             currentPerson++;
-            renderTrain();
+            updateTrainCard();
         } else if (e.key === 'Enter') {
             goToCheck();
         }
@@ -379,7 +406,7 @@ function handleTrainKeys(e) {
         e.preventDefault();
         if (currentPerson > 0) {
             currentPerson--;
-            renderTrain();
+            updateTrainCard();
         }
     }
 }
@@ -450,7 +477,8 @@ function renderCheck() {
             inp.addEventListener('keydown', handleCheckKey);
         });
 
-        focusCurrentInput();
+        // Ставим фокус в первое поле БЕЗ скролла
+        setTimeout(() => focusCurrentInput(false), 0);
     }
 
     updateHeader();
@@ -478,22 +506,41 @@ function handleCheckKey(e) {
 
     currentPerson = next;
     updateCheckHighlight();
-    focusCurrentInput();
-    scrollCurrentInputIntoView();
+    focusCurrentInput(true);   // со скроллом — только при явной навигации
 }
 
-function focusCurrentInput() {
+/* Фокус БЕЗ автоскролла (preventScroll), чтобы браузер не прыгал */
+function focusCurrentInput(scrollIfNeeded) {
     const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
-    if (el) {
+    if (!el) return;
+
+    try {
+        el.focus({ preventScroll: true });
+    } catch (_) {
         el.focus();
-        const val = el.value;
-        try { el.setSelectionRange(val.length, val.length); } catch(_) {}
     }
+
+    const val = el.value;
+    try { el.setSelectionRange(val.length, val.length); } catch (_) {}
+
+    if (scrollIfNeeded) scrollCurrentInputIntoView();
 }
 
+/* Скролл ТОЛЬКО если поле вне видимой области */
 function scrollCurrentInputIntoView() {
     const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
-    if (el) {
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const vw = window.innerWidth  || document.documentElement.clientWidth;
+
+    const outTop    = rect.top    < 0;
+    const outBottom = rect.bottom > vh;
+    const outLeft   = rect.left   < 0;
+    const outRight  = rect.right  > vw;
+
+    if (outTop || outBottom || outLeft || outRight) {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }
 }
@@ -700,11 +747,10 @@ finishBtn.addEventListener('click', () => {
 /* ===== Глобальные клавиши ===== */
 document.addEventListener('keydown', handleTrainKeys);
 
-/* ===== Реакция на изменение размера ===== */
+/* ===== Реакция на resize ===== */
 window.addEventListener('resize', () => {
     updateCheckCols();
     if (screen === 'check' && checkPhase === 'input') {
-        // перерисуем сетку — число колонок могло измениться
         renderCheck();
     }
 });
