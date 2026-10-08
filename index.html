@@ -93,7 +93,7 @@
             cursor: pointer; transition: background 0.15s, color 0.15s, transform 0.1s;
         }
         .level.active { background: #e57373; color: #fff; }
-        .level.active:hover { background: #ef5350; }
+        .level.active:hover { filter: brightness(1.08); }
         .level.active:active { transform: scale(0.96); }
 
         /* ===== Таймер (слева) ===== */
@@ -166,12 +166,10 @@
         .finish-btn.continue:hover { background: #3498db; }
 
         /* ===== Режимы шапки ===== */
-        /* Тренировка / проверка / результаты: центр виден, правый и уровень скрыты */
         .topbar-inner.mode-train .center-slot { display: flex; }
         .topbar-inner.mode-train .right       { display: none !important; }
         .topbar-inner.mode-train .level-cycle { display: none !important; }
 
-        /* Домашний / история: центр скрыт, правый и уровень видны */
         .topbar-inner.mode-home .center-slot { display: none; }
 
         /* ===== Адаптивность ===== */
@@ -201,8 +199,6 @@
             .history-btn { font-size: 11px; padding: 0 0.5em; height: 26px; }
             .lang-btn { font-size: 11px; padding: 0 0.4em; }
 
-            /* На узких экранах центр может пересекаться с таймером —
-               сдвигаем таймер и кнопку, уменьшая размер */
             .center-slot { gap: 0.3em; }
             .finish-btn { padding: 0.3em 0.6em; font-size: 11px; }
         }
@@ -524,6 +520,7 @@
     </div>
 
     <script src="a1.js"></script>
+    <script src="a2.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
