@@ -250,15 +250,23 @@
             word-break: normal;
             overflow-wrap: break-word;
             hyphens: auto;
+            cursor: pointer;
         }
 
+        /* Плашка с английским словом — БЕЗ переноса, авто-уменьшение шрифта */
         .name-plate {
             width: min(46vh, 380px); padding: 0.4em 1em;
             background: #ffffff; border-radius: 8px; text-align: center;
             font-size: clamp(22px, 2.4vw + 1vh, 38px);
             font-weight: 500;
             color: #212121; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+            line-height: 1.1;
         }
+
         .train-controls { display: flex; gap: 0.5em; }
         .ctrl-btn {
             width: 56px; height: 44px; border: none; border-radius: 4px;
