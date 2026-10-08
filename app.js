@@ -282,8 +282,6 @@ function ensureThumbVisible() {
 
 /* ===== Экран тренировки ===== */
 function renderTrain() {
-    const w = sessionWords[currentPerson];
-
     view.innerHTML = `
         <div class="train-screen">
             <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
@@ -449,9 +447,6 @@ function renderCheck() {
 
             inp.addEventListener('keydown', handleCheckKey);
         });
-
-        // Автофокус на текущем (первом) поле — без скролла страницы
-        setTimeout(() => focusCurrentInput(false), 50);
     }
 
     updateHeader();
