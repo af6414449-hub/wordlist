@@ -264,7 +264,6 @@ function startSession() {
 }
 
 /* ===== Лента миниатюр ===== */
-
 function buildThumbsHTML() {
     return sessionWords.map((item, i) => `
         <div class="thumb${i === currentPerson ? ' active' : ''}" data-index="${i}">
@@ -275,7 +274,9 @@ function buildThumbsHTML() {
 }
 
 function updateThumbsActive() {
-    document.querySelectorAll('.thumbs .thumb').forEach(el => {
+    const bar = document.getElementById('thumbsBar');
+    if (!bar) return;
+    bar.querySelectorAll('.thumb').forEach(el => {
         el.classList.toggle('active', Number(el.dataset.index) === currentPerson);
     });
 }
@@ -295,7 +296,6 @@ function ensureThumbVisible() {
     if (outLeft || outRight) {
         const target = active.offsetLeft
             - (bar.clientWidth - active.clientWidth) / 2;
-        // Мгновенно, без анимации — чтобы не было прыжка в 0 на мобильных
         bar.scrollLeft = Math.max(0, target);
     }
 }
@@ -304,60 +304,60 @@ function ensureThumbVisible() {
 function renderTrain() {
     const w = sessionWords[currentPerson];
 
-    let thumbsBar = document.getElementById('thumbsBar');
-
-    if (!thumbsBar) {
-        view.innerHTML = `
-            <div class="train-screen">
-                <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
-                <div class="train-area">
-                    <div class="train-main">
-                        <div class="face-square" id="faceSquare">${w.ru}</div>
-                        <div class="name-plate" id="namePlate"></div>
-                        <div class="train-controls">
-                            <button class="ctrl-btn" id="btnFirst">⏮</button>
-                            <button class="ctrl-btn" id="btnPrev">◀</button>
-                            <button class="ctrl-btn" id="btnNext">▶</button>
-                        </div>
+    view.innerHTML = `
+        <div class="train-screen">
+            <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
+            <div class="train-area">
+                <div class="train-main">
+                    <div class="face-square" id="faceSquare"></div>
+                    <div class="name-plate" id="namePlate"></div>
+                    <div class="train-controls">
+                        <button class="ctrl-btn" id="btnFirst">⏮</button>
+                        <button class="ctrl-btn" id="btnPrev">◀</button>
+                        <button class="ctrl-btn" id="btnNext">▶</button>
                     </div>
                 </div>
             </div>
-        `;
+        </div>
+    `;
 
-        thumbsBar = document.getElementById('thumbsBar');
+    const thumbsBar = document.getElementById('thumbsBar');
+    thumbsBar.addEventListener('click', (e) => {
+        const t = e.target.closest('.thumb');
+        if (!t) return;
+        currentPerson = Number(t.dataset.index);
+        updateTrainCard();
+    });
 
-        thumbsBar.addEventListener('click', (e) => {
-            const t = e.target.closest('.thumb');
-            if (!t) return;
-            currentPerson = Number(t.dataset.index);
-            updateTrainCard();
-        });
+    const btnFirst = document.getElementById('btnFirst');
+    const btnPrev  = document.getElementById('btnPrev');
+    const btnNext  = document.getElementById('btnNext');
+    const faceSquare = document.getElementById('faceSquare');
 
-        document.getElementById('btnFirst').addEventListener('click', () => {
-            currentPerson = 0; updateTrainCard();
-        });
-        document.getElementById('btnPrev').addEventListener('click', () => {
-            currentPerson = Math.max(0, currentPerson - 1); updateTrainCard();
-        });
-        document.getElementById('btnNext').addEventListener('click', () => {
-            if (currentPerson >= sessionWords.length - 1) {
-                goToCheck();
-                return;
-            }
+    btnFirst.addEventListener('click', () => {
+        currentPerson = 0;
+        updateTrainCard();
+    });
+    btnPrev.addEventListener('click', () => {
+        currentPerson = Math.max(0, currentPerson - 1);
+        updateTrainCard();
+    });
+    btnNext.addEventListener('click', () => {
+        if (currentPerson >= sessionWords.length - 1) {
+            goToCheck();
+            return;
+        }
+        currentPerson++;
+        updateTrainCard();
+    });
+    faceSquare.addEventListener('click', () => {
+        if (currentPerson < sessionWords.length - 1) {
             currentPerson++;
             updateTrainCard();
-        });
-
-        const faceSquare = document.getElementById('faceSquare');
-        faceSquare.addEventListener('click', () => {
-            if (currentPerson < sessionWords.length - 1) {
-                currentPerson++;
-                updateTrainCard();
-            } else {
-                goToCheck();
-            }
-        });
-    }
+        } else {
+            goToCheck();
+        }
+    });
 
     updateTrainCard();
     updateHeader();
