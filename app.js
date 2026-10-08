@@ -449,6 +449,9 @@ function renderCheck() {
 
             inp.addEventListener('keydown', handleCheckKey);
         });
+
+        // Автофокус на текущем (первом) поле — без скролла страницы
+        setTimeout(() => focusCurrentInput(false), 50);
     }
 
     updateHeader();
