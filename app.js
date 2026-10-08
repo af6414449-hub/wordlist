@@ -9,8 +9,11 @@ let currentPerson = 0;
 
 const TRAIN_SECONDS = 60;
 const SESSION_SIZE  = 20;
-const CHECK_COLS    = 5;
-const HISTORY_MAX   = 20;      // хранить 20 последних попыток
+const HISTORY_MAX   = 20;
+
+/* Колонок в проверке: 5 обычно, 3 на узких экранах.
+   Значение обновляется динамически. */
+let CHECK_COLS = 5;
 
 let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
@@ -43,6 +46,7 @@ const finishBtn  = document.getElementById('finishBtn');
 const timerWrap  = document.getElementById('timerWrap');
 const timerValue = document.getElementById('timerValue');
 const historyBtn = document.getElementById('historyBtn');
+const levelCycleBtn = document.getElementById('levelCycleBtn');
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -91,7 +95,12 @@ function evaluate(userAnswer, correctAnswer) {
     return dist <= allowed ? 'close' : 'wrong';
 }
 
-/* ===== Прогресс (localStorage) ===== */
+/* ===== Адаптивный CHECK_COLS ===== */
+function updateCheckCols() {
+    CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
+}
+
+/* ===== Прогресс ===== */
 function progressKey(level) { return 'wordlist_progress_' + level; }
 
 function loadProgress(level) {
@@ -115,7 +124,7 @@ function resetProgress(level) {
     try { localStorage.removeItem(progressKey(level)); } catch (_) {}
 }
 
-/* ===== История (localStorage) ===== */
+/* ===== История ===== */
 function loadHistory() {
     try {
         const raw = localStorage.getItem('wordlist_history');
@@ -151,14 +160,33 @@ function renderLevels() {
         btn.addEventListener('click', () => {
             currentLevel = btn.dataset.level;
             renderLevels();
+            updateLevelCycleBtn();
             if (screen === 'home') renderHome();
         });
     });
+
+    updateLevelCycleBtn();
 }
+
+function updateLevelCycleBtn() {
+    levelCycleBtn.textContent = currentLevel;
+}
+
+/* Кнопка-цикл: переключает только между доступными уровнями */
+function cycleLevel() {
+    const enabled = levels.filter(l => l.enabled).map(l => l.code);
+    if (!enabled.length) return;
+    const idx = enabled.indexOf(currentLevel);
+    const next = enabled[(idx + 1) % enabled.length];
+    currentLevel = next;
+    updateLevelCycleBtn();
+    if (screen === 'home') renderHome();
+}
+
+levelCycleBtn.addEventListener('click', cycleLevel);
 
 /* ===== Шапка ===== */
 function updateHeader() {
-    // Кнопка «Результаты» активна на экране истории
     historyBtn.classList.toggle('active', screen === 'history');
 
     if (screen === 'home' || screen === 'history') {
@@ -224,14 +252,11 @@ function renderHome() {
 
 /* ===== Старт сессии с учётом прогресса ===== */
 function startSession() {
-    const bank  = BANKS[currentLevel] || [];
-    const prog  = loadProgress(currentLevel);
+    const bank = BANKS[currentLevel] || [];
+    const prog = loadProgress(currentLevel);
     const learnedSet = new Set(prog.learned);
 
-    // Слова, которые ещё не выучены
     let fresh = bank.filter(w => !learnedSet.has(w.en));
-
-    // Если новых не хватает на полную сессию — обнуляем прогресс
     if (fresh.length < SESSION_SIZE) {
         resetProgress(currentLevel);
         fresh = bank.slice();
@@ -259,7 +284,7 @@ function renderTrain() {
 
     view.innerHTML = `
         <div class="train-screen">
-            <div class="thumbs">${thumbsHtml}</div>
+            <div class="thumbs" id="thumbsBar">${thumbsHtml}</div>
             <div class="train-area">
                 <div class="train-main">
                     <div class="face-square" id="faceSquare">${w.ru}</div>
@@ -311,13 +336,25 @@ function renderTrain() {
         });
     });
 
-    const activeThumb = document.querySelector('.thumb.active');
-    if (activeThumb) {
-        activeThumb.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'center'
-        });
+    /* НЕ сбрасываем позицию скролла в начало.
+       Прокручиваем ТОЛЬКО если активная карточка вне видимой области. */
+    const thumbsBar = document.getElementById('thumbsBar');
+    const activeThumb = thumbsBar.querySelector('.thumb.active');
+    if (activeThumb && thumbsBar) {
+        const barRect = thumbsBar.getBoundingClientRect();
+        const thumbRect = activeThumb.getBoundingClientRect();
+
+        const outLeft  = thumbRect.left  < barRect.left;
+        const outRight = thumbRect.right > barRect.right;
+
+        if (outLeft || outRight) {
+            const target = activeThumb.offsetLeft
+                - (thumbsBar.clientWidth - activeThumb.clientWidth) / 2;
+            thumbsBar.scrollTo({
+                left: Math.max(0, target),
+                behavior: 'smooth'
+            });
+        }
     }
 
     updateHeader();
@@ -350,6 +387,7 @@ function handleTrainKeys(e) {
 /* ===== Переход в проверку ===== */
 function goToCheck() {
     stopTimer();
+    updateCheckCols();
     screen = 'check';
     checkPhase = 'input';
     sessionWords = shuffle(sessionWords);
@@ -436,7 +474,6 @@ function handleCheckKey(e) {
     }
 
     e.preventDefault();
-
     if (next < 0 || next >= sessionWords.length) return;
 
     currentPerson = next;
@@ -457,11 +494,7 @@ function focusCurrentInput() {
 function scrollCurrentInputIntoView() {
     const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
     if (el) {
-        el.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'nearest'
-        });
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }
 }
 
@@ -471,16 +504,14 @@ function updateCheckHighlight() {
     });
 }
 
-/* ===== Сохранение прогресса после проверки ===== */
+/* ===== Прогресс после проверки ===== */
 function commitProgress() {
     const prog = loadProgress(currentLevel);
     const learnedSet = new Set(prog.learned);
 
     sessionWords.forEach((item, i) => {
         const verdict = evaluate(userAnswers[i] || '', item.en);
-        if (verdict === 'correct') {
-            learnedSet.add(item.en);
-        }
+        if (verdict === 'correct') learnedSet.add(item.en);
     });
 
     prog.learned = Array.from(learnedSet);
@@ -539,7 +570,7 @@ function renderResults() {
     updateHeader();
 }
 
-/* ===== Экран истории ===== */
+/* ===== История ===== */
 function renderHistory() {
     const history = loadHistory();
 
@@ -638,10 +669,8 @@ finishBtn.addEventListener('click', () => {
     }
 
     if (screen === 'check' && checkPhase === 'result') {
-        // Фиксируем прогресс и пишем запись в историю
         commitProgress();
 
-        // Считаем статистику
         let correct = 0, close = 0, wrong = 0;
         sessionWords.forEach((item, i) => {
             const v = evaluate(userAnswers[i] || '', item.en);
@@ -654,11 +683,7 @@ finishBtn.addEventListener('click', () => {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
-        pushHistory({
-            date: dateStr,
-            correct, close, wrong,
-            total: sessionWords.length
-        });
+        pushHistory({ date: dateStr, correct, close, wrong, total: sessionWords.length });
 
         screen = 'results';
         renderResults();
@@ -675,8 +700,18 @@ finishBtn.addEventListener('click', () => {
 /* ===== Глобальные клавиши ===== */
 document.addEventListener('keydown', handleTrainKeys);
 
+/* ===== Реакция на изменение размера ===== */
+window.addEventListener('resize', () => {
+    updateCheckCols();
+    if (screen === 'check' && checkPhase === 'input') {
+        // перерисуем сетку — число колонок могло измениться
+        renderCheck();
+    }
+});
+
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', () => {
+    updateCheckCols();
     renderLevels();
     renderHome();
 });
