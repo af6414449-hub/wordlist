@@ -180,20 +180,15 @@ function cycleLevel() {
 
 levelCycleBtn.addEventListener('click', cycleLevel);
 
-/* ===== Шапка: управляем ТОЛЬКО классами, без display =====
-   CSS сам решает, что показать на широких/узких. */
-
+/* ===== Шапка ===== */
 function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history');
 
-    // Классы режима на inner
-    topbarInner.classList.toggle('mode-home',    screen === 'home' || screen === 'history');
-    topbarInner.classList.toggle('mode-train',   screen === 'train' || screen === 'check' || screen === 'results');
+    topbarInner.classList.toggle('mode-home',  screen === 'home' || screen === 'history');
+    topbarInner.classList.toggle('mode-train', screen === 'train' || screen === 'check' || screen === 'results');
 
-    // Показываем/скрываем слот таймера+кнопки
     trainSlot.style.display = (screen === 'train' || screen === 'check' || screen === 'results') ? 'flex' : 'none';
 
-    // Таймер — только на тренировке
     const showTimer = (screen === 'train');
     timerWrap.style.display = showTimer ? '' : 'none';
 
@@ -268,7 +263,7 @@ function startSession() {
     startTimer();
 }
 
-/* ===== Лента миниатюр: рендерим ОДИН раз, потом только класс .active ===== */
+/* ===== Лента миниатюр ===== */
 
 function buildThumbsHTML() {
     return sessionWords.map((item, i) => `
@@ -300,7 +295,8 @@ function ensureThumbVisible() {
     if (outLeft || outRight) {
         const target = active.offsetLeft
             - (bar.clientWidth - active.clientWidth) / 2;
-        bar.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+        // Мгновенно, без анимации — чтобы не было прыжка в 0 на мобильных
+        bar.scrollLeft = Math.max(0, target);
     }
 }
 
@@ -308,12 +304,9 @@ function ensureThumbVisible() {
 function renderTrain() {
     const w = sessionWords[currentPerson];
 
-    // Если лента ещё не создана (новая сессия) — строим её
-    // Иначе — просто обновляем активный класс и центральную карточку
     let thumbsBar = document.getElementById('thumbsBar');
 
     if (!thumbsBar) {
-        // Первый рендер этой сессии
         view.innerHTML = `
             <div class="train-screen">
                 <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
@@ -331,7 +324,8 @@ function renderTrain() {
             </div>
         `;
 
-        // Делегированный обработчик кликов по миниатюрам
+        thumbsBar = document.getElementById('thumbsBar');
+
         thumbsBar.addEventListener('click', (e) => {
             const t = e.target.closest('.thumb');
             if (!t) return;
@@ -369,7 +363,6 @@ function renderTrain() {
     updateHeader();
 }
 
-/* Обновляет центральную карточку, активный класс и скролл — БЕЗ пересоздания ленты */
 function updateTrainCard() {
     const w = sessionWords[currentPerson];
 
@@ -476,9 +469,6 @@ function renderCheck() {
 
             inp.addEventListener('keydown', handleCheckKey);
         });
-
-        // Ставим фокус в первое поле БЕЗ скролла
-        setTimeout(() => focusCurrentInput(false), 0);
     }
 
     updateHeader();
@@ -506,10 +496,9 @@ function handleCheckKey(e) {
 
     currentPerson = next;
     updateCheckHighlight();
-    focusCurrentInput(true);   // со скроллом — только при явной навигации
+    focusCurrentInput(true);
 }
 
-/* Фокус БЕЗ автоскролла (preventScroll), чтобы браузер не прыгал */
 function focusCurrentInput(scrollIfNeeded) {
     const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
     if (!el) return;
@@ -526,7 +515,6 @@ function focusCurrentInput(scrollIfNeeded) {
     if (scrollIfNeeded) scrollCurrentInputIntoView();
 }
 
-/* Скролл ТОЛЬКО если поле вне видимой области */
 function scrollCurrentInputIntoView() {
     const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
     if (!el) return;
@@ -541,7 +529,7 @@ function scrollCurrentInputIntoView() {
     const outRight  = rect.right  > vw;
 
     if (outTop || outBottom || outLeft || outRight) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
     }
 }
 
