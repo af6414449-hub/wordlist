@@ -56,6 +56,7 @@
             z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         .topbar-inner {
+            position: relative;
             min-height: 48px;
             padding: 0 0.75em 0 1.5em;
             display: flex; align-items: center; gap: 0.4em;
@@ -95,12 +96,7 @@
         .level.active:hover { background: #ef5350; }
         .level.active:active { transform: scale(0.96); }
 
-        /* На НЕ-домашнем экране кнопка уровня скрыта */
-        .topbar-inner.mode-train .level-cycle {
-            display: none !important;
-        }
-
-        /* ===== Таймер и кнопка Завершить ===== */
+        /* ===== Таймер (слева) ===== */
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
             margin-left: 0.5em; flex-wrap: wrap;
@@ -112,19 +108,12 @@
             display: inline-block; min-width: 3em; text-align: right;
         }
 
-        .finish-btn {
-            background: #2ecc71; color: #fff; border: none; border-radius: 4px;
-            padding: 0.35em 0.9em; font-size: 13px; font-weight: 600;
-            font-family: inherit; cursor: pointer;
-            transition: background 0.15s, transform 0.1s;
-            white-space: nowrap;
+        /* ===== Правый блок (Результаты + English) ===== */
+        .right {
+            margin-left: auto;
+            display: flex; align-items: center; gap: 0.4em;
+            flex: 0 0 auto;
         }
-        .finish-btn:hover { background: #27ae60; }
-        .finish-btn:active { transform: scale(0.97); }
-        .finish-btn.continue { background: #5dade2; }
-        .finish-btn.continue:hover { background: #3498db; }
-
-        .right { margin-left: auto; display: flex; align-items: center; gap: 0.4em; flex: 0 0 auto; }
 
         .history-btn {
             display: inline-flex; align-items: center; gap: 0.35em;
@@ -151,7 +140,41 @@
         .lang-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
         .lang-btn.active { background: rgba(255,255,255,0.15); color: #fff; }
 
-        /* ===== Адаптивность шапки ===== */
+        /* ===== Центр: кнопка Завершить/Продолжить ===== */
+        .center-slot {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            align-items: center;
+            gap: 0.6em;
+            pointer-events: none;
+        }
+        .center-slot > * { pointer-events: auto; }
+
+        .finish-btn {
+            background: #2ecc71; color: #fff; border: none; border-radius: 4px;
+            padding: 0.4em 1.2em; font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .finish-btn:hover { background: #27ae60; }
+        .finish-btn:active { transform: scale(0.97); }
+        .finish-btn.continue { background: #5dade2; }
+        .finish-btn.continue:hover { background: #3498db; }
+
+        /* ===== Режимы шапки ===== */
+        /* Тренировка / проверка / результаты: центр виден, правый и уровень скрыты */
+        .topbar-inner.mode-train .center-slot { display: flex; }
+        .topbar-inner.mode-train .right       { display: none !important; }
+        .topbar-inner.mode-train .level-cycle { display: none !important; }
+
+        /* Домашний / история: центр скрыт, правый и уровень видны */
+        .topbar-inner.mode-home .center-slot { display: none; }
+
+        /* ===== Адаптивность ===== */
         @media (max-width: 720px) {
             .topbar-inner { padding: 0 0.5em 0 0.75em; gap: 0.25em; }
             .brand { margin-right: 0; }
@@ -169,7 +192,7 @@
             .timer { font-size: 11px; }
             .timer b { font-size: 13px; min-width: 2.6em; }
 
-            .finish-btn { padding: 0.3em 0.65em; font-size: 12px; }
+            .finish-btn { padding: 0.3em 0.8em; font-size: 12px; }
         }
 
         @media (max-width: 560px) {
@@ -177,6 +200,11 @@
 
             .history-btn { font-size: 11px; padding: 0 0.5em; height: 26px; }
             .lang-btn { font-size: 11px; padding: 0 0.4em; }
+
+            /* На узких экранах центр может пересекаться с таймером —
+               сдвигаем таймер и кнопку, уменьшая размер */
+            .center-slot { gap: 0.3em; }
+            .finish-btn { padding: 0.3em 0.6em; font-size: 11px; }
         }
 
         /* ===== Контент ===== */
@@ -467,19 +495,25 @@
                     </span>
                 </a>
 
-                <!-- Единственная кнопка уровня -->
+                <!-- Кнопка уровня (только home) -->
                 <div class="level-cycle">
                     <button class="level active" id="levelCycleBtn">A1</button>
                 </div>
 
+                <!-- Таймер слева (только train) -->
                 <div class="train-slot" id="trainSlot" style="display:none">
                     <div class="timer" id="timerWrap">Осталось до конца: <b id="timerValue">1:00</b></div>
-                    <button class="finish-btn" id="finishBtn">Завершить</button>
                 </div>
 
+                <!-- Правый блок: Результаты + English (только home/history) -->
                 <div class="right">
                     <button class="history-btn" id="historyBtn">Результаты</button>
                     <button class="lang-btn active" data-lang="en">English</button>
+                </div>
+
+                <!-- Кнопка Завершить/Продолжить — по центру (train/check/results) -->
+                <div class="center-slot">
+                    <button class="finish-btn" id="finishBtn">Завершить</button>
                 </div>
             </div>
         </nav>
