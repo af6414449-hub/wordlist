@@ -1,5 +1,5 @@
 /* Wordlist — логика приложения.
-   Зависит от a1.js (массив WORDS_A1). */
+   Зависит от a1.js (WORDS_A1) и a2.js (WORDS_A2). */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -18,7 +18,7 @@ let timerInterval  = null;
 
 const levels = [
     { code: 'A1', enabled: true  },
-    { code: 'A2', enabled: false },
+    { code: 'A2', enabled: true  },
     { code: 'B1', enabled: false },
     { code: 'B2', enabled: false },
     { code: 'C1', enabled: false },
@@ -26,12 +26,14 @@ const levels = [
 ];
 
 const levelColors = {
-    A1: '#e57373',
-    A2: '#e0e0e0', B1: '#e0e0e0', B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
+    A1: '#e57373',   // красный
+    A2: '#e6a23c',   // оранжевый
+    B1: '#e0e0e0', B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
 };
 
 const BANKS = {
     A1: WORDS_A1,
+    A2: WORDS_A2,
 };
 
 let sessionWords = [];
@@ -97,7 +99,7 @@ function updateCheckCols() {
     CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
 }
 
-/* ===== Прогресс ===== */
+/* ===== Прогресс (по уровням) ===== */
 function progressKey(level) { return 'wordlist_progress_' + level; }
 
 function loadProgress(level) {
@@ -119,10 +121,12 @@ function resetProgress(level) {
     try { localStorage.removeItem(progressKey(level)); } catch (_) {}
 }
 
-/* ===== История ===== */
-function loadHistory() {
+/* ===== История (по уровням) ===== */
+function historyKey(level) { return 'wordlist_history_' + level; }
+
+function loadHistory(level) {
     try {
-        const raw = localStorage.getItem('wordlist_history');
+        const raw = localStorage.getItem(historyKey(level));
         if (!raw) return [];
         const arr = JSON.parse(raw);
         return Array.isArray(arr) ? arr : [];
@@ -131,21 +135,23 @@ function loadHistory() {
     }
 }
 
-function saveHistory(list) {
+function saveHistory(level, list) {
     try {
-        localStorage.setItem('wordlist_history', JSON.stringify(list.slice(0, HISTORY_MAX)));
+        localStorage.setItem(historyKey(level), JSON.stringify(list.slice(0, HISTORY_MAX)));
     } catch (_) {}
 }
 
-function pushHistory(entry) {
-    const list = loadHistory();
+function pushHistory(level, entry) {
+    const list = loadHistory(level);
     list.unshift(entry);
-    saveHistory(list.slice(0, HISTORY_MAX));
+    saveHistory(level, list.slice(0, HISTORY_MAX));
 }
 
 /* ===== Уровень — одна кнопка ===== */
 function updateLevelCycleBtn() {
     levelCycleBtn.textContent = currentLevel;
+    const color = levelColors[currentLevel] || '#e57373';
+    levelCycleBtn.style.background = color;
 }
 
 function cycleLevel() {
@@ -583,13 +589,13 @@ function renderResults() {
     updateHeader();
 }
 
-/* ===== История ===== */
+/* ===== История (по текущему уровню) ===== */
 function renderHistory() {
-    const history = loadHistory();
+    const history = loadHistory(currentLevel);
 
     let body = '';
     if (!history.length) {
-        body = `<div class="history-empty">Пока нет ни одной попытки.</div>`;
+        body = `<div class="history-empty">Пока нет ни одной попытки для уровня ${currentLevel}.</div>`;
     } else {
         const rows = history.map(rec => {
             const total = rec.total || 0;
@@ -622,7 +628,7 @@ function renderHistory() {
     view.innerHTML = `
         <div class="history-area">
             <div class="history-header">
-                <span>Последние ${HISTORY_MAX} попыток</span>
+                <span>Уровень ${currentLevel} — последние ${HISTORY_MAX} попыток</span>
                 <span style="font-weight:400;color:#777;font-size:13px">
                     Всего сохранено: ${history.length}
                 </span>
@@ -696,7 +702,7 @@ finishBtn.addEventListener('click', () => {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
-        pushHistory({ date: dateStr, correct, close, wrong, total: sessionWords.length });
+        pushHistory(currentLevel, { date: dateStr, correct, close, wrong, total: sessionWords.length });
 
         screen = 'results';
         renderResults();
