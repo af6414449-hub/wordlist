@@ -718,14 +718,6 @@ finishBtn.addEventListener('click', () => {
 /* ===== Глобальные клавиши ===== */
 document.addEventListener('keydown', handleTrainKeys);
 
-/* ===== Реакция на resize ===== */
-window.addEventListener('resize', () => {
-    updateCheckCols();
-    if (screen === 'check' && checkPhase === 'input') {
-        renderCheck();
-    }
-});
-
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', () => {
     updateCheckCols();
