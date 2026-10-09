@@ -88,6 +88,8 @@
             letter-spacing: -0.02em;
             cursor: pointer;
             transition: background 0.15s, transform 0.1s;
+            padding-bottom: 1px;       /* визуальная компенсация baseline */
+            transform: none;
         }
         .level-icon:active { transform: scale(0.95); }
         .level-icon[data-level="B1"] { color: #000; }
