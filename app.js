@@ -34,7 +34,7 @@ const levelColors = {
     A1: '#e57373',
     A2: '#e6a23c',
     B1: '#f5c518',
-    B2: '#4fa3d1',
+    B2: '#2ecc71',
     C1: '#e0e0e0',
     C2: '#e0e0e0',
 };
