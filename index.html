@@ -77,6 +77,68 @@
         }
         .home-icon svg { width: 18px; height: 18px; display: block; }
 
+        /* ===== Прогресс-бар в шапке (только home) ===== */
+        .progress-wrap {
+            display: none;
+            align-items: center;
+            gap: 0.5em;
+            margin-left: 0.75em;
+            flex: 0 1 auto;
+            min-width: 0;
+        }
+        .progress-bar {
+            position: relative;
+            width: 120px;
+            height: 12px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 6px;
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+        .progress-bar-fill {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            background: #2ecc71;
+            border-radius: 6px;
+            transition: width 0.3s;
+        }
+        .progress-count {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        /* ===== Кнопки уровней в шапке истории ===== */
+        .levels-tabs {
+            display: none;
+            align-items: center; gap: 0.3em;
+            margin-left: 0.5em;
+            flex: 0 0 auto;
+        }
+        .level-tab {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 38px; height: 26px; padding: 0 0.6em;
+            border-radius: 4px;
+            border: none;
+            font-family: inherit;
+            font-size: 12px; font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, opacity 0.15s;
+        }
+        .level-tab.active { opacity: 1; }
+        .level-tab:not(.active) {
+            background: rgba(255,255,255,0.15) !important;
+            color: rgba(255,255,255,0.55);
+        }
+        .level-tab:not(.active):hover {
+            background: rgba(255,255,255,0.25) !important;
+            color: #fff;
+        }
+        .level-tab.active[data-level="B1"] { color: #000; }
+
         /* ===== Таймер (слева) ===== */
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
@@ -101,7 +163,6 @@
             flex: 0 0 auto;
         }
 
-        /* Кнопка Результаты — синяя */
         .history-btn {
             display: inline-flex; align-items: center; gap: 0.35em;
             height: 32px; padding: 0 0.9em;
@@ -176,6 +237,11 @@
             .timer b { font-size: 13px; min-width: 2.4em; }
 
             .finish-btn { padding: 0.3em 0.8em; font-size: 12px; }
+
+            .progress-bar { width: 80px; height: 10px; }
+            .progress-count { font-size: 11px; }
+
+            .level-tab { min-width: 34px; height: 24px; font-size: 11px; }
         }
 
         @media (max-width: 560px) {
@@ -189,6 +255,10 @@
 
             .center-slot { gap: 0.3em; }
             .finish-btn { padding: 0.3em 0.6em; font-size: 11px; }
+
+            .progress-bar { width: 60px; height: 9px; }
+            .progress-count { font-size: 10px; }
+            .progress-wrap { margin-left: 0.5em; gap: 0.35em; }
         }
 
         @media (max-width: 400px) {
@@ -231,10 +301,8 @@
         .level-btn:hover { filter: brightness(1.08); }
         .level-btn:active { transform: scale(0.97); }
 
-        /* B1 — текст чёрный */
         .level-btn[data-level="B1"] { color: #000; }
 
-        /* Уровень без базы — приглушён */
         .level-btn.disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -489,13 +557,6 @@
             overflow: auto;
             display: flex; flex-direction: column; gap: 0.75em;
         }
-        .history-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0.75em 1em;
-            background: #fff; border-radius: 4px;
-            font-size: 16px; font-weight: 600;
-            flex-wrap: wrap; gap: 0.5em;
-        }
         .history-empty {
             padding: 2em 1em;
             background: #fff; border-radius: 4px;
@@ -538,18 +599,29 @@
                     </span>
                 </a>
 
-                <!-- Таймер слева (только train) -->
+                <!-- Прогресс-бар (только home) -->
+                <div class="progress-wrap" id="progressWrap">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+                    </div>
+                    <span class="progress-count" id="progressCount">0 / 0</span>
+                </div>
+
+                <!-- Кнопки уровней в шапке (только history) -->
+                <div class="levels-tabs" id="levelsTabs"></div>
+
+                <!-- Таймер (только train/check) -->
                 <div class="train-slot" id="trainSlot" style="display:none">
                     <div class="timer" id="timerWrap">Осталось: <b id="timerValue">1:00</b></div>
                 </div>
 
-                <!-- Правый блок: Результаты + English (только home/history) -->
+                <!-- Правый блок: Результаты + English -->
                 <div class="right">
                     <button class="history-btn" id="historyBtn">Результаты</button>
                     <button class="lang-btn active" data-lang="en">English</button>
                 </div>
 
-                <!-- Кнопка Завершить/Продолжить — по центру (train/check/results) -->
+                <!-- Кнопка Завершить/Продолжить — по центру -->
                 <div class="center-slot">
                     <button class="finish-btn" id="finishBtn">Завершить</button>
                 </div>
