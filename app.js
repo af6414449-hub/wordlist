@@ -7,19 +7,35 @@ let screen = 'home';           // 'home' | 'train' | 'check' | 'results' | 'hist
 let checkPhase = 'input';
 let currentPerson = 0;
 
-/* Режим: сколько слов и сколько секунд */
-let currentMode = 20;          // 20 / 40 / 60
-const MODE_CONFIG = {
-    20: { words: 20, seconds: 60 },
-    40: { words: 40, seconds: 120 },
-    60: { words: 60, seconds: 180 },
-};
-
-const HISTORY_MAX = 20;
+const TRAIN_SECONDS = 60;
+const HISTORY_MAX   = 20;
 let CHECK_COLS = 5;
 
-let timerRemaining = 60;
+let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
+
+/* ===== Размер сессии (20 / 40 / 60) ===== */
+const SESSION_SIZE_KEY = 'wordlist_size';
+
+function loadSessionSize() {
+    try {
+        const v = Number(localStorage.getItem(SESSION_SIZE_KEY));
+        if (v === 20 || v === 40 || v === 60) return v;
+    } catch (_) {}
+    return 20;
+}
+
+function saveSessionSize(v) {
+    try { localStorage.setItem(SESSION_SIZE_KEY, String(v)); } catch (_) {}
+}
+
+let sessionSize = loadSessionSize();
+
+function sizeToSeconds(n) {
+    if (n === 40) return 120;
+    if (n === 60) return 180;
+    return 60;
+}
 
 const levels = [
     { code: 'A1', enabled: true  },
@@ -63,7 +79,7 @@ const progressCount = document.getElementById('progressCount');
 const progressBadge = document.getElementById('progressBadge');
 const levelsTabs    = document.getElementById('levelsTabs');
 
-/* ===== Настройки ===== */
+/* ===== Настройки подсказки ===== */
 const HINTS_KEY = 'wordlist_hints';
 
 function loadHints() {
@@ -125,7 +141,7 @@ function updateCheckCols() {
     CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
 }
 
-/* Подсказка: первый символ с учётом "to " / "the " */
+/* Подсказка */
 function buildHint(correctAnswer) {
     const s = correctAnswer || '';
     if (!s) return '';
@@ -220,7 +236,7 @@ function formatTime(sec) {
 }
 function startTimer() {
     stopTimer();
-    timerRemaining = MODE_CONFIG[currentMode].seconds;
+    timerRemaining = sizeToSeconds(sessionSize);
     timerValue.textContent = formatTime(timerRemaining);
     timerInterval = setInterval(() => {
         timerRemaining--;
@@ -299,18 +315,18 @@ function renderHome() {
         return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
     }).join('');
 
-    const modesHtml = [20, 40, 60].map(m =>
-        `<button class="mode-btn" data-mode="${m}">${m}</button>`
-    ).join('');
+    const hasBank = !!BANKS[currentLevel];
+    const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
         <div class="home-layout">
             <div class="levels-grid">${levelsHtml}</div>
-            <div class="modes-grid">${modesHtml}</div>
+            <button class="${startCls}" id="startBtn">
+                Начать тренировку
+            </button>
         </div>
     `;
 
-    // Клик по уровню — только выбор
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.disabled) return;
@@ -322,16 +338,12 @@ function renderHome() {
         });
     });
 
-    // Клик по режиму — старт сессии
-    view.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!BANKS[currentLevel]) {
-                alert('База для уровня ' + currentLevel + ' ещё не подключена.');
-                return;
-            }
-            currentMode = Number(btn.dataset.mode);
-            startSession();
-        });
+    document.getElementById('startBtn').addEventListener('click', () => {
+        if (!BANKS[currentLevel]) {
+            alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+            return;
+        }
+        startSession();
     });
 
     updateHeader();
@@ -345,7 +357,7 @@ function startSession() {
         return;
     }
 
-    const size = MODE_CONFIG[currentMode].words;
+    const size = sessionSize;
 
     const prog = loadProgress(currentLevel);
     const learnedSet = new Set(prog.learned);
@@ -765,6 +777,7 @@ function renderSettings() {
     view.innerHTML = `
         <div class="settings-area">
             <h1 class="settings-title">Настройки</h1>
+
             <div class="settings-row">
                 <label class="switch">
                     <input type="checkbox" id="hintsToggle" ${hintsOn ? 'checked' : ''}>
@@ -772,11 +785,23 @@ function renderSettings() {
                 </label>
                 <span>Подсказка</span>
             </div>
+
+            <div class="settings-row" style="margin-top: 0.75em">
+                <span>Слов за тренировку</span>
+                <button class="size-btn" id="sizeBtn">${sessionSize}</button>
+            </div>
         </div>
     `;
 
     document.getElementById('hintsToggle').addEventListener('change', (e) => {
         saveHints(e.target.checked);
+    });
+
+    document.getElementById('sizeBtn').addEventListener('click', () => {
+        sessionSize = (sessionSize === 20) ? 40 :
+                      (sessionSize === 40) ? 60 : 20;
+        saveSessionSize(sessionSize);
+        renderSettings();
     });
 
     updateHeader();
