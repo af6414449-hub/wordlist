@@ -110,6 +110,25 @@
             white-space: nowrap;
         }
 
+        /* Мини-иконка уровня рядом с прогрессом */
+        .progress-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            background: #e57373;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            flex: 0 0 auto;
+            margin-left: 0.35em;
+            transition: background 0.15s, color 0.15s;
+        }
+        .progress-badge[data-level="B1"] { color: #000; }
+
         /* ===== Кнопки уровней в шапке истории ===== */
         .levels-tabs {
             display: none;
@@ -139,7 +158,7 @@
         }
         .level-tab.active[data-level="B1"] { color: #000; }
 
-        /* ===== Таймер (слева) ===== */
+        /* ===== Таймер ===== */
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
             margin-left: 0.5em; flex-wrap: wrap;
@@ -156,7 +175,7 @@
             display: inline-block; min-width: 2.6em; text-align: right;
         }
 
-        /* ===== Правый блок (Результаты + English) ===== */
+        /* ===== Правый блок ===== */
         .right {
             margin-left: auto;
             display: flex; align-items: center; gap: 0.4em;
@@ -191,7 +210,7 @@
         .lang-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
         .lang-btn.active { background: rgba(255,255,255,0.25); color: #fff; }
 
-        /* ===== Центр: кнопка Завершить/Продолжить ===== */
+        /* ===== Кнопка Завершить/Продолжить по центру ===== */
         .center-slot {
             position: absolute;
             left: 50%;
@@ -220,8 +239,7 @@
         /* ===== Режимы шапки ===== */
         .topbar-inner.mode-train .center-slot { display: flex; }
         .topbar-inner.mode-train .right       { display: none !important; }
-
-        .topbar-inner.mode-home .center-slot { display: none; }
+        .topbar-inner.mode-home  .center-slot { display: none; }
 
         /* ===== Адаптивность ===== */
         @media (max-width: 720px) {
@@ -240,6 +258,7 @@
 
             .progress-bar { width: 80px; height: 10px; }
             .progress-count { font-size: 11px; }
+            .progress-badge { width: 20px; height: 20px; font-size: 10px; }
 
             .level-tab { min-width: 34px; height: 24px; font-size: 11px; }
         }
@@ -259,6 +278,7 @@
             .progress-bar { width: 60px; height: 9px; }
             .progress-count { font-size: 10px; }
             .progress-wrap { margin-left: 0.5em; gap: 0.35em; }
+            .progress-badge { width: 18px; height: 18px; font-size: 9px; }
         }
 
         @media (max-width: 400px) {
@@ -273,7 +293,7 @@
         }
         .view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 
-        /* ===== Главный экран: сетка уровней 3 в ряд ===== */
+        /* ===== Главный экран ===== */
         .levels-grid {
             margin-left: 2em;
             display: grid;
@@ -283,7 +303,7 @@
             align-content: start;
         }
 
-        /* Кнопка уровня — по умолчанию СЕРАЯ */
+        /* Кнопка уровня — по умолчанию СЕРАЯ, БЕЗ цвета */
         .level-btn {
             width: 120px;
             height: 120px;
@@ -303,37 +323,36 @@
         .level-btn:hover { background: #d5d5d5; }
         .level-btn:active { transform: scale(0.97); }
 
-        /* Активная — цветная, БЕЛЫЙ текст */
+        /* Активная — цвет приходит inline из JS, текст белый */
         .level-btn.active { color: #fff; }
-
-        /* B1 активная — чёрный текст */
         .level-btn.active[data-level="B1"] { color: #000; }
 
-        /* Большая кнопка «Начать тренировку» */
+        /* ===== Большая кнопка «Начать тренировку» =====
+           ВСЕГДА нейтрального серого цвета, не зависит от уровня */
         .start-btn {
             margin-left: 2em;
-            margin-top: 1.25em;
+            margin-top: 1.5em;
             width: 396px;
             max-width: calc(100% - 2em);
-            height: 72px;
+            height: 90px;
             border: none;
             border-radius: 8px;
             font-family: inherit;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
             color: #fff;
+            background: #4a4a4a;
             cursor: pointer;
-            transition: transform 0.1s, filter 0.15s;
+            transition: transform 0.1s, background 0.15s;
         }
-        .start-btn:hover { filter: brightness(1.08); }
+        .start-btn:hover { background: #5a5a5a; }
         .start-btn:active { transform: scale(0.98); }
-        .start-btn[data-level="B1"] { color: #000; }
 
         .start-btn.disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .start-btn.disabled:hover { filter: none; }
+        .start-btn.disabled:hover { background: #4a4a4a; }
 
         @media (max-width: 720px) {
             .levels-grid {
@@ -347,9 +366,10 @@
             }
             .start-btn {
                 margin-left: 1em;
+                margin-top: 1.25em;
                 width: calc(3 * 96px + 2 * 0.6em);
-                height: 60px;
-                font-size: 18px;
+                height: 76px;
+                font-size: 20px;
             }
         }
 
@@ -368,10 +388,11 @@
             }
             .start-btn {
                 margin-left: 0.5em;
+                margin-top: 1em;
                 width: calc(100% - 1em);
                 max-width: 340px;
-                height: 54px;
-                font-size: 16px;
+                height: 68px;
+                font-size: 18px;
             }
         }
 
@@ -528,7 +549,6 @@
             overflow: auto;
             display: flex; flex-direction: column; gap: 0.75em;
         }
-
         .results-summary {
             display: flex; gap: 0.75em; padding: 0.75em 1em;
             background: #fff; border-radius: 4px;
@@ -546,16 +566,8 @@
         .pill.total  { background: #eaecee; color: #212121; }
 
         @media (max-width: 560px) {
-            .results-summary {
-                gap: 0.4em;
-                padding: 0.5em 0.6em;
-                font-size: 12px;
-            }
-            .results-summary .pill {
-                padding: 0.2em 0.5em;
-                font-size: 12px;
-                gap: 0.25em;
-            }
+            .results-summary { gap: 0.4em; padding: 0.5em 0.6em; font-size: 12px; }
+            .results-summary .pill { padding: 0.2em 0.5em; font-size: 12px; gap: 0.25em; }
         }
 
         .results-table {
@@ -638,12 +650,13 @@
                     </span>
                 </a>
 
-                <!-- Прогресс-бар (только home) -->
+                <!-- Прогресс-бар + иконка уровня (только home) -->
                 <div class="progress-wrap" id="progressWrap">
                     <div class="progress-bar">
                         <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
                     </div>
                     <span class="progress-count" id="progressCount">0 / 0</span>
+                    <span class="progress-badge" id="progressBadge">A1</span>
                 </div>
 
                 <!-- Кнопки уровней в шапке (только history) -->
