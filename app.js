@@ -328,6 +328,7 @@ function renderHome() {
         </div>
     `;
 
+    // Клик по уровню — только выбор
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.disabled) return;
@@ -339,6 +340,7 @@ function renderHome() {
         });
     });
 
+    // Клик по «Начать тренировку»
     document.getElementById('startBtn').addEventListener('click', () => {
         if (!BANKS[currentLevel]) {
             alert('База для уровня ' + currentLevel + ' ещё не подключена.');
