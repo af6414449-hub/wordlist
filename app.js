@@ -26,9 +26,9 @@ const levels = [
 ];
 
 const levelColors = {
-    A1: '#e57373',   // красный
-    A2: '#e6a23c',   // оранжевый
-    B1: '#f5c518',   // жёлтый
+    A1: '#e57373',
+    A2: '#e6a23c',
+    B1: '#f5c518',
     B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
 };
 
@@ -51,6 +51,7 @@ const topbarInner   = document.querySelector('.topbar-inner');
 const progressWrap  = document.getElementById('progressWrap');
 const progressFill  = document.getElementById('progressFill');
 const progressCount = document.getElementById('progressCount');
+const progressBadge = document.getElementById('progressBadge');
 const levelsTabs    = document.getElementById('levelsTabs');
 
 /* ===== Утилиты ===== */
@@ -104,7 +105,7 @@ function updateCheckCols() {
     CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
 }
 
-/* ===== Прогресс (по уровням) ===== */
+/* ===== Прогресс ===== */
 function progressKey(level) { return 'wordlist_progress_' + level; }
 
 function loadProgress(level) {
@@ -126,7 +127,7 @@ function resetProgress(level) {
     try { localStorage.removeItem(progressKey(level)); } catch (_) {}
 }
 
-/* ===== История (по уровням) ===== */
+/* ===== История ===== */
 function historyKey(level) { return 'wordlist_history_' + level; }
 
 function loadHistory(level) {
@@ -164,13 +165,9 @@ function updateHeader() {
     const showTimer = (screen === 'train');
     timerWrap.style.display = showTimer ? '' : 'none';
 
-    // Прогресс-бар — только на главной
     progressWrap.style.display = (screen === 'home') ? 'flex' : 'none';
+    levelsTabs.style.display   = (screen === 'history') ? 'flex' : 'none';
 
-    // Табы уровней — только в истории
-    levelsTabs.style.display = (screen === 'history') ? 'flex' : 'none';
-
-    // Обновляем прогресс-бар, если на главной
     if (screen === 'home') updateProgressBar();
 
     if (screen === 'results') {
@@ -211,7 +208,7 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Прогресс-бар ===== */
+/* ===== Прогресс-бар + иконка уровня ===== */
 function updateProgressBar() {
     const bank = BANKS[currentLevel] || [];
     const total = bank.length;
@@ -222,6 +219,11 @@ function updateProgressBar() {
 
     progressFill.style.width = pct + '%';
     progressCount.textContent = `${learned} / ${total}`;
+
+    const color = levelColors[currentLevel] || '#e0e0e0';
+    progressBadge.textContent = currentLevel;
+    progressBadge.dataset.level = currentLevel;
+    progressBadge.style.background = color;
 }
 
 /* ===== Кнопки уровней в шапке истории ===== */
@@ -247,7 +249,7 @@ function renderLevelTabs() {
     });
 }
 
-/* ===== Главный экран: сетка кнопок уровней + кнопка старта ===== */
+/* ===== Главный экран: выбор уровня + кнопка старта ===== */
 function renderHome() {
     const enabled = levels.filter(l => l.enabled);
 
@@ -260,28 +262,23 @@ function renderHome() {
         return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
     }).join('');
 
-    const startColor = levelColors[currentLevel] || '#e0e0e0';
     const hasBank = !!BANKS[currentLevel];
     const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
         <div class="levels-grid">${buttonsHtml}</div>
-        <button class="${startCls}"
-                id="startBtn"
-                data-level="${currentLevel}"
-                style="background:${startColor}">
+        <button class="${startCls}" id="startBtn">
             Начать тренировку
         </button>
     `;
 
-    // Клик по кнопке уровня — только выбираем
+    // Клик по кнопке уровня — ТОЛЬКО выбор
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const lvl = btn.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
             renderHome();
-            updateProgressBar();
         });
     });
 
@@ -663,7 +660,7 @@ function renderResults() {
     updateHeader();
 }
 
-/* ===== История (по текущему уровню) ===== */
+/* ===== История ===== */
 function renderHistory() {
     renderLevelTabs();
 
