@@ -77,7 +77,7 @@
         }
         .home-icon svg { width: 18px; height: 18px; display: block; }
 
-        /* ===== Прогресс-бар в шапке (только home) ===== */
+        /* ===== Прогресс-бар + иконка уровня ===== */
         .progress-wrap {
             display: none;
             align-items: center;
@@ -110,22 +110,26 @@
             white-space: nowrap;
         }
 
-        /* Мини-иконка уровня рядом с прогрессом */
+        /* Мини-иконка уровня */
         .progress-badge {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
+            padding: 0;
             border-radius: 4px;
             background: #e57373;
             color: #fff;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
-            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            font-variant-numeric: normal;
+            letter-spacing: -0.02em;
             flex: 0 0 auto;
-            margin-left: 0.35em;
+            margin-left: 0.4em;
             transition: background 0.15s, color 0.15s;
+            transform: translateY(-0.5px);
         }
         .progress-badge[data-level="B1"] { color: #000; }
 
@@ -210,7 +214,7 @@
         .lang-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
         .lang-btn.active { background: rgba(255,255,255,0.25); color: #fff; }
 
-        /* ===== Кнопка Завершить/Продолжить по центру ===== */
+        /* ===== Кнопка по центру ===== */
         .center-slot {
             position: absolute;
             left: 50%;
@@ -258,7 +262,7 @@
 
             .progress-bar { width: 80px; height: 10px; }
             .progress-count { font-size: 11px; }
-            .progress-badge { width: 20px; height: 20px; font-size: 10px; }
+            .progress-badge { width: 22px; height: 22px; font-size: 11px; }
 
             .level-tab { min-width: 34px; height: 24px; font-size: 11px; }
         }
@@ -278,7 +282,7 @@
             .progress-bar { width: 60px; height: 9px; }
             .progress-count { font-size: 10px; }
             .progress-wrap { margin-left: 0.5em; gap: 0.35em; }
-            .progress-badge { width: 18px; height: 18px; font-size: 9px; }
+            .progress-badge { width: 20px; height: 20px; font-size: 10px; }
         }
 
         @media (max-width: 400px) {
@@ -303,7 +307,6 @@
             align-content: start;
         }
 
-        /* Кнопка уровня — по умолчанию СЕРАЯ, БЕЗ цвета */
         .level-btn {
             width: 120px;
             height: 120px;
@@ -323,12 +326,11 @@
         .level-btn:hover { background: #d5d5d5; }
         .level-btn:active { transform: scale(0.97); }
 
-        /* Активная — цвет приходит inline из JS, текст белый */
         .level-btn.active { color: #fff; }
         .level-btn.active[data-level="B1"] { color: #000; }
 
         /* ===== Большая кнопка «Начать тренировку» =====
-           ВСЕГДА нейтрального серого цвета, не зависит от уровня */
+           ВСЕГДА нейтрального серого цвета */
         .start-btn {
             margin-left: 2em;
             margin-top: 1.5em;
@@ -650,7 +652,6 @@
                     </span>
                 </a>
 
-                <!-- Прогресс-бар + иконка уровня (только home) -->
                 <div class="progress-wrap" id="progressWrap">
                     <div class="progress-bar">
                         <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
@@ -659,21 +660,17 @@
                     <span class="progress-badge" id="progressBadge">A1</span>
                 </div>
 
-                <!-- Кнопки уровней в шапке (только history) -->
                 <div class="levels-tabs" id="levelsTabs"></div>
 
-                <!-- Таймер (только train/check) -->
                 <div class="train-slot" id="trainSlot" style="display:none">
                     <div class="timer" id="timerWrap">Осталось: <b id="timerValue">1:00</b></div>
                 </div>
 
-                <!-- Правый блок: Результаты + English -->
                 <div class="right">
                     <button class="history-btn" id="historyBtn">Результаты</button>
                     <button class="lang-btn active" data-lang="en">English</button>
                 </div>
 
-                <!-- Кнопка Завершить/Продолжить — по центру -->
                 <div class="center-slot">
                     <button class="finish-btn" id="finishBtn">Завершить</button>
                 </div>
