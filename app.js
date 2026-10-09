@@ -3,17 +3,22 @@
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
-let screen = 'home';
+let screen = 'home';           // 'home' | 'train' | 'check' | 'results' | 'history' | 'settings'
 let checkPhase = 'input';
 let currentPerson = 0;
 
-const TRAIN_SECONDS = 60;
-const SESSION_SIZE  = 20;
-const HISTORY_MAX   = 20;
+/* Режим: сколько слов и сколько секунд */
+let currentMode = 20;          // 20 / 40 / 60
+const MODE_CONFIG = {
+    20: { words: 20, seconds: 60 },
+    40: { words: 40, seconds: 120 },
+    60: { words: 60, seconds: 180 },
+};
 
+const HISTORY_MAX = 20;
 let CHECK_COLS = 5;
 
-let timerRemaining = TRAIN_SECONDS;
+let timerRemaining = 60;
 let timerInterval  = null;
 
 const levels = [
@@ -50,12 +55,24 @@ const finishBtn     = document.getElementById('finishBtn');
 const timerWrap     = document.getElementById('timerWrap');
 const timerValue    = document.getElementById('timerValue');
 const historyBtn    = document.getElementById('historyBtn');
+const settingsBtn   = document.getElementById('settingsBtn');
 const topbarInner   = document.querySelector('.topbar-inner');
 const progressWrap  = document.getElementById('progressWrap');
 const progressFill  = document.getElementById('progressFill');
 const progressCount = document.getElementById('progressCount');
 const progressBadge = document.getElementById('progressBadge');
 const levelsTabs    = document.getElementById('levelsTabs');
+
+/* ===== Настройки ===== */
+const HINTS_KEY = 'wordlist_hints';
+
+function loadHints() {
+    try { return localStorage.getItem(HINTS_KEY) === '1'; }
+    catch (_) { return false; }
+}
+function saveHints(on) {
+    try { localStorage.setItem(HINTS_KEY, on ? '1' : '0'); } catch (_) {}
+}
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -106,6 +123,15 @@ function evaluate(userAnswer, correctAnswer) {
 
 function updateCheckCols() {
     CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
+}
+
+/* Подсказка: первый символ с учётом "to " / "the " */
+function buildHint(correctAnswer) {
+    const s = correctAnswer || '';
+    if (!s) return '';
+    if (s.startsWith('to ') && s.length > 3)  return 'to ' + s[3];
+    if (s.startsWith('the ') && s.length > 4) return 'the ' + s[4];
+    return s[0] || '';
 }
 
 /* ===== Прогресс ===== */
@@ -159,8 +185,9 @@ function pushHistory(level, entry) {
 /* ===== Шапка ===== */
 function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history');
+    settingsBtn.classList.toggle('active', screen === 'settings');
 
-    topbarInner.classList.toggle('mode-home',  screen === 'home' || screen === 'history');
+    topbarInner.classList.toggle('mode-home',  screen === 'home' || screen === 'history' || screen === 'settings');
     topbarInner.classList.toggle('mode-train', screen === 'train' || screen === 'check' || screen === 'results');
 
     trainSlot.style.display = (screen === 'train' || screen === 'check' || screen === 'results') ? 'flex' : 'none';
@@ -193,7 +220,7 @@ function formatTime(sec) {
 }
 function startTimer() {
     stopTimer();
-    timerRemaining = TRAIN_SECONDS;
+    timerRemaining = MODE_CONFIG[currentMode].seconds;
     timerValue.textContent = formatTime(timerRemaining);
     timerInterval = setInterval(() => {
         timerRemaining--;
@@ -252,9 +279,9 @@ function renderLevelTabs() {
     });
 }
 
-/* ===== Главный экран: сетка уровней + кнопка старта ===== */
+/* ===== Главный экран ===== */
 function renderHome() {
-    const buttonsHtml = levels.map(lvl => {
+    const levelsHtml = levels.map(lvl => {
         const hasBank = !!BANKS[lvl.code];
         const isActive = lvl.code === currentLevel && hasBank;
 
@@ -272,19 +299,18 @@ function renderHome() {
         return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
     }).join('');
 
-    const hasBank = !!BANKS[currentLevel];
-    const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
+    const modesHtml = [20, 40, 60].map(m =>
+        `<button class="mode-btn" data-mode="${m}">${m}</button>`
+    ).join('');
 
     view.innerHTML = `
         <div class="home-layout">
-            <div class="levels-grid">${buttonsHtml}</div>
-            <button class="${startCls}" id="startBtn">
-                Начать тренировку
-            </button>
+            <div class="levels-grid">${levelsHtml}</div>
+            <div class="modes-grid">${modesHtml}</div>
         </div>
     `;
 
-    // Клик по кнопке уровня — только выбор
+    // Клик по уровню — только выбор
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.disabled) return;
@@ -296,13 +322,16 @@ function renderHome() {
         });
     });
 
-    // Клик по «Начать тренировку»
-    document.getElementById('startBtn').addEventListener('click', () => {
-        if (!BANKS[currentLevel]) {
-            alert('База для уровня ' + currentLevel + ' ещё не подключена.');
-            return;
-        }
-        startSession();
+    // Клик по режиму — старт сессии
+    view.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!BANKS[currentLevel]) {
+                alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+                return;
+            }
+            currentMode = Number(btn.dataset.mode);
+            startSession();
+        });
     });
 
     updateHeader();
@@ -316,17 +345,19 @@ function startSession() {
         return;
     }
 
+    const size = MODE_CONFIG[currentMode].words;
+
     const prog = loadProgress(currentLevel);
     const learnedSet = new Set(prog.learned);
 
     let fresh = bank.filter(w => !learnedSet.has(w.en));
-    if (fresh.length < SESSION_SIZE) {
+    if (fresh.length < size) {
         resetProgress(currentLevel);
         fresh = bank.slice();
     }
 
     const pool = shuffle(fresh);
-    sessionWords = pool.slice(0, SESSION_SIZE);
+    sessionWords = pool.slice(0, size);
     userAnswers  = sessionWords.map(() => '');
     currentPerson = 0;
     screen = 'train';
@@ -480,7 +511,13 @@ function goToCheck() {
     screen = 'check';
     checkPhase = 'input';
     sessionWords = shuffle(sessionWords);
-    userAnswers  = sessionWords.map(() => '');
+
+    const hintsOn = loadHints();
+    userAnswers = sessionWords.map(item => {
+        if (hintsOn) return buildHint(item.en);
+        return '';
+    });
+
     currentPerson = 0;
     renderCheck();
 }
@@ -721,6 +758,30 @@ function renderHistory() {
     updateHeader();
 }
 
+/* ===== Настройки ===== */
+function renderSettings() {
+    const hintsOn = loadHints();
+
+    view.innerHTML = `
+        <div class="settings-area">
+            <h1 class="settings-title">Настройки</h1>
+            <div class="settings-row">
+                <label class="switch">
+                    <input type="checkbox" id="hintsToggle" ${hintsOn ? 'checked' : ''}>
+                    <span class="switch-slider"></span>
+                </label>
+                <span>Подсказка</span>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('hintsToggle').addEventListener('change', (e) => {
+        saveHints(e.target.checked);
+    });
+
+    updateHeader();
+}
+
 /* ===== Авто-уменьшение шрифта ===== */
 function fitFontSize(el, max, min) {
     if (!el) return;
@@ -755,6 +816,18 @@ historyBtn.addEventListener('click', () => {
         stopTimer();
         screen = 'history';
         renderHistory();
+    }
+});
+
+/* ===== Кнопка «Настройки» ===== */
+settingsBtn.addEventListener('click', () => {
+    if (screen === 'settings') {
+        screen = 'home';
+        renderHome();
+    } else {
+        stopTimer();
+        screen = 'settings';
+        renderSettings();
     }
 });
 
