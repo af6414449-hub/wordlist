@@ -249,7 +249,7 @@ function renderLevelTabs() {
     });
 }
 
-/* ===== Главный экран: выбор уровня + кнопка старта ===== */
+/* ===== Главный экран ===== */
 function renderHome() {
     const enabled = levels.filter(l => l.enabled);
 
@@ -279,6 +279,7 @@ function renderHome() {
             if (lvl === currentLevel) return;
             currentLevel = lvl;
             renderHome();
+            updateProgressBar();   // обновляем иконку уровня и счётчик
         });
     });
 
