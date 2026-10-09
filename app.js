@@ -3,7 +3,7 @@
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
-let screen = 'home';           // 'home' | 'train' | 'check' | 'results' | 'history' | 'settings'
+let screen = 'home';
 let checkPhase = 'input';
 let currentPerson = 0;
 
@@ -76,7 +76,7 @@ const topbarInner   = document.querySelector('.topbar-inner');
 const progressWrap  = document.getElementById('progressWrap');
 const progressFill  = document.getElementById('progressFill');
 const progressCount = document.getElementById('progressCount');
-const progressBadge = document.getElementById('progressBadge');
+const homeLevelIcon = document.getElementById('homeLevelIcon');
 const levelsTabs    = document.getElementById('levelsTabs');
 
 /* ===== Настройки подсказки ===== */
@@ -254,7 +254,7 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Прогресс-бар + иконка уровня ===== */
+/* ===== Прогресс-бар + иконка уровня в шапке ===== */
 function updateProgressBar() {
     const bank = BANKS[currentLevel] || [];
     const total = bank.length;
@@ -267,9 +267,9 @@ function updateProgressBar() {
     progressCount.textContent = `${learned} / ${total}`;
 
     const color = levelColors[currentLevel] || '#e0e0e0';
-    progressBadge.textContent = currentLevel;
-    progressBadge.dataset.level = currentLevel;
-    progressBadge.style.background = color;
+    homeLevelIcon.textContent = currentLevel;
+    homeLevelIcon.dataset.level = currentLevel;
+    homeLevelIcon.style.background = color;
 }
 
 /* ===== Кнопки уровней в шапке истории ===== */
@@ -290,6 +290,7 @@ function renderLevelTabs() {
             if (lvl === currentLevel) return;
             currentLevel = lvl;
             renderLevelTabs();
+            updateProgressBar();
             if (screen === 'history') renderHistory();
         });
     });
