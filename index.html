@@ -109,8 +109,6 @@
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
-
-        /* Мини-иконка уровня */
         .progress-badge {
             display: inline-flex;
             align-items: center;
@@ -132,6 +130,7 @@
             transform: translateY(-0.5px);
         }
         .progress-badge[data-level="B1"] { color: #000; }
+        .progress-badge[data-level="B2"] { color: #fff; }
 
         /* ===== Кнопки уровней в шапке истории ===== */
         .levels-tabs {
@@ -139,6 +138,7 @@
             align-items: center; gap: 0.3em;
             margin-left: 0.5em;
             flex: 0 0 auto;
+            flex-wrap: wrap;
         }
         .level-tab {
             display: inline-flex; align-items: center; justify-content: center;
@@ -297,23 +297,34 @@
         }
         .view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 
-        /* ===== Главный экран ===== */
-        .levels-grid {
-            margin-left: 2em;
-            display: grid;
-            grid-template-columns: repeat(3, 120px);
-            gap: 0.75em;
+        /* ===== Главный экран: сетка уровней + кнопка старта ===== */
+        .home-layout {
+            display: flex;
+            align-items: stretch;
+            gap: 1em;
             margin-top: 1em;
-            align-content: start;
+            margin-left: 2em;
+            margin-right: 2em;
+            max-width: 900px;
         }
 
+        /* Сетка уровней: 3 колонки × 2 строки */
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(2, 100px);
+            gap: 0.6em;
+            flex: 0 0 auto;
+        }
+
+        /* Кнопка уровня — по умолчанию серая */
         .level-btn {
-            width: 120px;
-            height: 120px;
+            width: 100%;
+            height: 100%;
             border: none;
             border-radius: 6px;
             font-family: inherit;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: rgba(255,255,255,0.55);
             background: #e0e0e0;
@@ -326,17 +337,24 @@
         .level-btn:hover { background: #d5d5d5; }
         .level-btn:active { transform: scale(0.97); }
 
+        /* Активная — цветная, текст белый */
         .level-btn.active { color: #fff; }
         .level-btn.active[data-level="B1"] { color: #000; }
 
-        /* ===== Большая кнопка «Начать тренировку» =====
-           ВСЕГДА нейтрального серого цвета */
+        /* Неактивная (нет базы) — серая, не кликается */
+        .level-btn.disabled {
+            background: #ededed;
+            color: #bdbdbd;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .level-btn.disabled:hover { background: #ededed; }
+        .level-btn.disabled:active { transform: none; }
+
+        /* Кнопка «Начать тренировку» — справа от сетки, во всю высоту */
         .start-btn {
-            margin-left: 2em;
-            margin-top: 1.5em;
-            width: 396px;
-            max-width: calc(100% - 2em);
-            height: 90px;
+            flex: 1 1 auto;
+            min-width: 220px;
             border: none;
             border-radius: 8px;
             font-family: inherit;
@@ -345,10 +363,11 @@
             color: #fff;
             background: #4a4a4a;
             cursor: pointer;
+            padding: 0 1em;
             transition: transform 0.1s, background 0.15s;
         }
         .start-btn:hover { background: #5a5a5a; }
-        .start-btn:active { transform: scale(0.98); }
+        .start-btn:active { transform: scale(0.99); }
 
         .start-btn.disabled {
             opacity: 0.5;
@@ -357,45 +376,33 @@
         .start-btn.disabled:hover { background: #4a4a4a; }
 
         @media (max-width: 720px) {
+            .home-layout {
+                margin-left: 1em;
+                margin-right: 1em;
+                gap: 0.75em;
+            }
             .levels-grid {
-                margin-left: 1em;
-                grid-template-columns: repeat(3, 96px);
-                gap: 0.6em;
+                grid-template-columns: repeat(3, 76px);
+                grid-template-rows: repeat(2, 76px);
+                gap: 0.5em;
             }
-            .level-btn {
-                width: 96px; height: 96px;
-                font-size: 26px;
-            }
-            .start-btn {
-                margin-left: 1em;
-                margin-top: 1.25em;
-                width: calc(3 * 96px + 2 * 0.6em);
-                height: 76px;
-                font-size: 20px;
-            }
+            .level-btn { font-size: 22px; }
+            .start-btn { font-size: 18px; min-width: 160px; }
         }
 
         @media (max-width: 560px) {
-            .levels-grid {
+            .home-layout {
                 margin-left: 0.5em;
-                grid-template-columns: repeat(3, minmax(0, 1fr));
+                margin-right: 0.5em;
                 gap: 0.5em;
-                max-width: 340px;
             }
-            .level-btn {
-                width: 100%;
-                aspect-ratio: 1 / 1;
-                height: auto;
-                font-size: 24px;
+            .levels-grid {
+                grid-template-columns: repeat(3, 62px);
+                grid-template-rows: repeat(2, 62px);
+                gap: 0.4em;
             }
-            .start-btn {
-                margin-left: 0.5em;
-                margin-top: 1em;
-                width: calc(100% - 1em);
-                max-width: 340px;
-                height: 68px;
-                font-size: 18px;
-            }
+            .level-btn { font-size: 18px; }
+            .start-btn { font-size: 15px; min-width: 120px; }
         }
 
         /* ===== Экран тренировки ===== */
@@ -685,6 +692,7 @@
     <script src="a1.js"></script>
     <script src="a2.js"></script>
     <script src="b1.js"></script>
+    <script src="b2.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
