@@ -1,5 +1,5 @@
 /* Wordlist — логика приложения.
-   Зависит от a1.js (WORDS_A1), a2.js (WORDS_A2) и опционально b1.js (WORDS_B1). */
+   Зависит от a1.js (WORDS_A1), a2.js (WORDS_A2), b1.js (WORDS_B1). */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -19,7 +19,7 @@ let timerInterval  = null;
 const levels = [
     { code: 'A1', enabled: true  },
     { code: 'A2', enabled: true  },
-    { code: 'B1', enabled: true  },   // включён
+    { code: 'B1', enabled: true  },
     { code: 'B2', enabled: false },
     { code: 'C1', enabled: false },
     { code: 'C2', enabled: false },
@@ -32,8 +32,6 @@ const levelColors = {
     B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
 };
 
-/* BANKS собираем безопасно: если файл b1.js не подключён — WORDS_B1 будет undefined,
-   и мы просто не добавим его в BANKS. */
 const BANKS = {
     A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
     A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
@@ -49,7 +47,6 @@ const finishBtn     = document.getElementById('finishBtn');
 const timerWrap     = document.getElementById('timerWrap');
 const timerValue    = document.getElementById('timerValue');
 const historyBtn    = document.getElementById('historyBtn');
-const levelCycleBtn = document.getElementById('levelCycleBtn');
 const topbarInner   = document.querySelector('.topbar-inner');
 
 /* ===== Утилиты ===== */
@@ -151,43 +148,6 @@ function pushHistory(level, entry) {
     saveHistory(level, list.slice(0, HISTORY_MAX));
 }
 
-/* ===== Уровень — одна кнопка ===== */
-function updateLevelCycleBtn() {
-    levelCycleBtn.textContent = currentLevel;
-    const color = levelColors[currentLevel] || '#e57373';
-    levelCycleBtn.style.background = color;
-    // если уровень без базы — приглушим цвет
-    if (!BANKS[currentLevel]) {
-        levelCycleBtn.style.opacity = '0.6';
-    } else {
-        levelCycleBtn.style.opacity = '1';
-    }
-}
-
-function cycleLevel() {
-    const enabled = levels.filter(l => l.enabled).map(l => l.code);
-    if (!enabled.length) return;
-    const idx = enabled.indexOf(currentLevel);
-    const next = enabled[(idx + 1) % enabled.length];
-    currentLevel = next;
-    updateLevelCycleBtn();
-
-    // Если мы на главной или в истории — просто перерисовать
-    if (screen === 'home')    { renderHome();    return; }
-    if (screen === 'history') { renderHistory(); return; }
-
-    // Если мы на экране результатов — пересчитать статистику для нового уровня
-    if (screen === 'results') {
-        // sessionWords/userAnswers относятся к предыдущему уровню.
-        // Пересчитывать их нет смысла — просто перерисовываем результаты
-        // на основе уже сохранённых ответов (они уже посчитаны).
-        renderResults();
-        return;
-    }
-}
-
-levelCycleBtn.addEventListener('click', cycleLevel);
-
 /* ===== Шапка ===== */
 function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history');
@@ -238,29 +198,31 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Главный экран ===== */
+/* ===== Главный экран: сетка кнопок уровней ===== */
 function renderHome() {
-    const color = levelColors[currentLevel] || '#e0e0e0';
-    const hasBank = !!BANKS[currentLevel];
+    const enabled = levels.filter(l => l.enabled);
+
+    const buttonsHtml = enabled.map(lvl => {
+        const color = levelColors[lvl.code] || '#e0e0e0';
+        const hasBank = !!BANKS[lvl.code];
+        const cls = hasBank ? 'level-btn' : 'level-btn disabled';
+        return `<button class="${cls}" data-level="${lvl.code}" style="background:${color}">${lvl.code}</button>`;
+    }).join('');
 
     view.innerHTML = `
-        <button class="quick-train" id="quickTrain" style="background:${color}">
-            Быстрая тренировка
-        </button>
-        ${hasBank ? '' : `
-            <p style="margin-left:2em;color:#a93226;font-size:14px;">
-                База для уровня ${currentLevel} ещё не подключена.
-            </p>
-        `}
+        <div class="levels-grid">${buttonsHtml}</div>
     `;
 
-    const btn = document.getElementById('quickTrain');
-    btn.addEventListener('click', () => {
-        if (!BANKS[currentLevel]) {
-            alert('База для уровня ' + currentLevel + ' ещё не подключена.');
-            return;
-        }
-        startSession();
+    view.querySelectorAll('.level-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lvl = btn.dataset.level;
+            if (!BANKS[lvl]) {
+                alert('База для уровня ' + lvl + ' ещё не подключена.');
+                return;
+            }
+            currentLevel = lvl;
+            startSession();
+        });
     });
 
     updateHeader();
@@ -582,10 +544,6 @@ function commitProgress() {
 
 /* ===== Результаты ===== */
 function renderResults() {
-    // На экране результатов кнопка уровня активна.
-    // При смене уровня перерисовываем текущие ответы — просто пересчёт статистики
-    // для уже сохранённых ответов (уровень влияет только на заголовок и кнопку).
-
     let correct = 0, close = 0, wrong = 0;
 
     const rows = sessionWords.map((item, i) => {
@@ -769,6 +727,5 @@ document.addEventListener('keydown', handleTrainKeys);
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', () => {
     updateCheckCols();
-    updateLevelCycleBtn();
     renderHome();
 });
