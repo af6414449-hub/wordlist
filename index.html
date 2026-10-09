@@ -188,7 +188,7 @@
         .history-btn {
             display: inline-flex; align-items: center; gap: 0.35em;
             height: 32px; padding: 0 0.9em;
-            background: #5dade2;
+            background: #8e44ad;
             color: #fff;
             border: none; border-radius: 6px;
             font-size: 13px; font-weight: 600;
@@ -196,10 +196,9 @@
             transition: background 0.15s;
             white-space: nowrap;
         }
-        .history-btn:hover { background: #3498db; }
-        .history-btn.active { background: #2e86c1; }
+        .history-btn:hover { background: #7d3c98; }
+        .history-btn.active { background: #6c3483; }
 
-        /* Квадратная кнопка с шестерёнкой */
         .settings-btn {
             display: inline-flex; align-items: center; justify-content: center;
             width: 32px; height: 32px;
@@ -305,30 +304,29 @@
         /* ===== Главный экран ===== */
         .home-layout {
             display: flex;
-            align-items: flex-start;
-            gap: 1em;
+            align-items: stretch;
+            gap: 1.5em;
             margin-top: 1em;
             margin-left: 2em;
             margin-right: 2em;
-            flex-wrap: wrap;
+            max-width: 900px;
         }
 
-        /* Сетка уровней: 3 колонки × 2 строки */
         .levels-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-template-rows: repeat(2, 100px);
+            display: flex;
+            flex-direction: column;
             gap: 0.6em;
             flex: 0 0 auto;
+            width: 200px;
         }
 
         .level-btn {
             width: 100%;
-            height: 100%;
+            height: 52px;
             border: none;
             border-radius: 6px;
             font-family: inherit;
-            font-size: 28px;
+            font-size: 20px;
             font-weight: 700;
             color: rgba(255,255,255,0.55);
             background: #e0e0e0;
@@ -339,7 +337,7 @@
             transition: transform 0.1s, background 0.15s, color 0.15s;
         }
         .level-btn:hover { background: #d5d5d5; }
-        .level-btn:active { transform: scale(0.97); }
+        .level-btn:active { transform: scale(0.98); }
 
         .level-btn.active { color: #fff; }
         .level-btn.active[data-level="B1"] { color: #000; }
@@ -353,99 +351,60 @@
         .level-btn.disabled:hover { background: #ededed; }
         .level-btn.disabled:active { transform: none; }
 
-        /* Три кнопки 20 / 40 / 60 — справа от сетки */
-        .modes-grid {
-            display: flex;
-            gap: 0.6em;
-            flex: 0 0 auto;
-            align-items: stretch;
-        }
-        .mode-btn {
-            width: 206px;
-            height: 206px;
+        .start-btn {
+            flex: 1 1 auto;
+            min-width: 220px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-family: inherit;
-            font-size: 72px;
+            font-size: 24px;
             font-weight: 700;
             color: #fff;
             background: #4a4a4a;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            padding: 0 1em;
             transition: transform 0.1s, background 0.15s;
         }
-        .mode-btn:hover { background: #5a5a5a; }
-        .mode-btn:active { transform: scale(0.98); }
+        .start-btn:hover { background: #5a5a5a; }
+        .start-btn:active { transform: scale(0.99); }
 
-        @media (max-width: 900px) {
-            .home-layout {
-                margin-left: 1em;
-                margin-right: 1em;
-                gap: 0.75em;
-            }
-            .levels-grid {
-                grid-template-columns: repeat(3, 76px);
-                grid-template-rows: repeat(2, 76px);
-                gap: 0.5em;
-            }
-            .level-btn { font-size: 22px; }
-
-            .mode-btn {
-                width: 158px;
-                height: 158px;
-                font-size: 56px;
-            }
+        .start-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
+        .start-btn.disabled:hover { background: #4a4a4a; }
 
         @media (max-width: 720px) {
             .home-layout {
-                margin-left: 0.75em;
-                margin-right: 0.75em;
-                gap: 0.6em;
+                margin-left: 1em;
+                margin-right: 1em;
+                gap: 1em;
             }
             .levels-grid {
-                grid-template-columns: repeat(3, 68px);
-                grid-template-rows: repeat(2, 68px);
-                gap: 0.4em;
+                width: 150px;
             }
-            .level-btn { font-size: 20px; }
-
-            .modes-grid { gap: 0.5em; }
-            .mode-btn {
-                width: 132px;
-                height: 132px;
-                font-size: 48px;
+            .level-btn {
+                height: 44px;
+                font-size: 17px;
             }
+            .start-btn { font-size: 18px; min-width: 160px; }
         }
 
         @media (max-width: 560px) {
             .home-layout {
                 margin-left: 0.5em;
                 margin-right: 0.5em;
-                gap: 0.5em;
+                gap: 0.75em;
             }
             .levels-grid {
-                grid-template-columns: repeat(3, 60px);
-                grid-template-rows: repeat(2, 60px);
-                gap: 0.35em;
-            }
-            .level-btn { font-size: 18px; }
-
-            /* Перенос режимов под сетку */
-            .modes-grid {
-                flex-basis: 100%;
+                width: 110px;
                 gap: 0.4em;
-                max-width: 100%;
-                flex-wrap: wrap;
             }
-            .mode-btn {
-                flex: 0 0 auto;
-                width: 90px;
-                height: 90px;
-                font-size: 34px;
+            .level-btn {
+                height: 38px;
+                font-size: 15px;
             }
+            .start-btn { font-size: 15px; min-width: 120px; }
         }
 
         /* ===== Экран настроек ===== */
@@ -475,7 +434,6 @@
             color: #212121;
         }
 
-        /* Ползунок */
         .switch {
             position: relative;
             display: inline-block;
@@ -511,6 +469,24 @@
         .switch input:checked + .switch-slider:before {
             transform: translateX(22px);
         }
+
+        .size-btn {
+            margin-left: auto;
+            min-width: 56px;
+            height: 36px;
+            padding: 0 0.8em;
+            background: #5dade2;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .size-btn:hover { background: #3498db; }
+        .size-btn:active { transform: scale(0.97); }
 
         /* ===== Экран тренировки ===== */
         .train-screen {
