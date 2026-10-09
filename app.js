@@ -247,31 +247,51 @@ function renderLevelTabs() {
     });
 }
 
-/* ===== Главный экран: сетка кнопок уровней ===== */
+/* ===== Главный экран: сетка кнопок уровней + кнопка старта ===== */
 function renderHome() {
     const enabled = levels.filter(l => l.enabled);
 
     const buttonsHtml = enabled.map(lvl => {
-        const color = levelColors[lvl.code] || '#e0e0e0';
-        const hasBank = !!BANKS[lvl.code];
-        const cls = hasBank ? 'level-btn' : 'level-btn disabled';
-        return `<button class="${cls}" data-level="${lvl.code}" style="background:${color}">${lvl.code}</button>`;
+        const isActive = lvl.code === currentLevel;
+        const cls = isActive ? 'level-btn active' : 'level-btn';
+        const style = isActive
+            ? `background:${levelColors[lvl.code] || '#e0e0e0'};`
+            : '';
+        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
     }).join('');
+
+    const startColor = levelColors[currentLevel] || '#e0e0e0';
+    const hasBank = !!BANKS[currentLevel];
+    const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
         <div class="levels-grid">${buttonsHtml}</div>
+        <button class="${startCls}"
+                id="startBtn"
+                data-level="${currentLevel}"
+                style="background:${startColor}">
+            Начать тренировку
+        </button>
     `;
 
+    // Клик по кнопке уровня — только выбираем
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const lvl = btn.dataset.level;
-            if (!BANKS[lvl]) {
-                alert('База для уровня ' + lvl + ' ещё не подключена.');
-                return;
-            }
+            if (lvl === currentLevel) return;
             currentLevel = lvl;
-            startSession();
+            renderHome();
+            updateProgressBar();
         });
+    });
+
+    // Клик по «Начать тренировку» — старт
+    document.getElementById('startBtn').addEventListener('click', () => {
+        if (!BANKS[currentLevel]) {
+            alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+            return;
+        }
+        startSession();
     });
 
     updateHeader();
