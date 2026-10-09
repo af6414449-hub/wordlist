@@ -48,6 +48,10 @@ const timerWrap     = document.getElementById('timerWrap');
 const timerValue    = document.getElementById('timerValue');
 const historyBtn    = document.getElementById('historyBtn');
 const topbarInner   = document.querySelector('.topbar-inner');
+const progressWrap  = document.getElementById('progressWrap');
+const progressFill  = document.getElementById('progressFill');
+const progressCount = document.getElementById('progressCount');
+const levelsTabs    = document.getElementById('levelsTabs');
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -160,6 +164,15 @@ function updateHeader() {
     const showTimer = (screen === 'train');
     timerWrap.style.display = showTimer ? '' : 'none';
 
+    // Прогресс-бар — только на главной
+    progressWrap.style.display = (screen === 'home') ? 'flex' : 'none';
+
+    // Табы уровней — только в истории
+    levelsTabs.style.display = (screen === 'history') ? 'flex' : 'none';
+
+    // Обновляем прогресс-бар, если на главной
+    if (screen === 'home') updateProgressBar();
+
     if (screen === 'results') {
         finishBtn.textContent = 'Продолжить';
         finishBtn.classList.add('continue');
@@ -196,6 +209,42 @@ function startTimer() {
 }
 function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+/* ===== Прогресс-бар ===== */
+function updateProgressBar() {
+    const bank = BANKS[currentLevel] || [];
+    const total = bank.length;
+    const prog = loadProgress(currentLevel);
+    const learned = prog.learned.length;
+
+    const pct = total ? Math.round(learned / total * 100) : 0;
+
+    progressFill.style.width = pct + '%';
+    progressCount.textContent = `${learned} / ${total}`;
+}
+
+/* ===== Кнопки уровней в шапке истории ===== */
+function renderLevelTabs() {
+    const enabled = levels.filter(l => l.enabled);
+
+    levelsTabs.innerHTML = enabled.map(lvl => {
+        const color = levelColors[lvl.code] || '#e0e0e0';
+        const isActive = lvl.code === currentLevel;
+        const cls = isActive ? 'level-tab active' : 'level-tab';
+        const style = isActive ? `background:${color};` : '';
+        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
+    }).join('');
+
+    levelsTabs.querySelectorAll('.level-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const lvl = tab.dataset.level;
+            if (lvl === currentLevel) return;
+            currentLevel = lvl;
+            renderLevelTabs();
+            if (screen === 'history') renderHistory();
+        });
+    });
 }
 
 /* ===== Главный экран: сетка кнопок уровней ===== */
@@ -596,6 +645,8 @@ function renderResults() {
 
 /* ===== История (по текущему уровню) ===== */
 function renderHistory() {
+    renderLevelTabs();
+
     const history = loadHistory(currentLevel);
 
     let body = '';
@@ -632,12 +683,6 @@ function renderHistory() {
 
     view.innerHTML = `
         <div class="history-area">
-            <div class="history-header">
-                <span>Уровень ${currentLevel} — последние ${HISTORY_MAX} попыток</span>
-                <span style="font-weight:400;color:#777;font-size:13px">
-                    Всего сохранено: ${history.length}
-                </span>
-            </div>
             ${body}
         </div>
     `;
