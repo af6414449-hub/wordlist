@@ -561,7 +561,7 @@ function renderResults() {
             <tr>
                 <td>${item.ru}</td>
                 <td class="${userCls}">${displayUser}</td>
-                <td class="answer-ok">${item.en} <span style="opacity:0.7;font-size:0.9em">(${item.pos})</span></td>
+                <td class="answer-ok">${item.en}</td>
             </tr>
         `;
     }).join('');
@@ -572,10 +572,10 @@ function renderResults() {
     view.innerHTML = `
         <div class="results-area">
             <div class="results-summary">
-                <span class="pill total">Уровень ${currentLevel} — всего: ${total}</span>
-                <span class="pill green">Правильно: ${correct} (${pct(correct)}%)</span>
-                <span class="pill orange">Недочёты: ${close} (${pct(close)}%)</span>
-                <span class="pill red">Ошибки: ${wrong} (${pct(wrong)}%)</span>
+                <span class="pill total">${currentLevel} · ${total}</span>
+                <span class="pill green">${correct} · ${pct(correct)}%</span>
+                <span class="pill orange">${close} · ${pct(close)}%</span>
+                <span class="pill red">${wrong} · ${pct(wrong)}%</span>
             </div>
 
             <table class="results-table">
@@ -693,8 +693,6 @@ finishBtn.addEventListener('click', () => {
     }
 
     if (screen === 'check' && checkPhase === 'result') {
-        commitProgress();
-
         let correct = 0, close = 0, wrong = 0;
         sessionWords.forEach((item, i) => {
             const v = evaluate(userAnswers[i] || '', item.en);
@@ -702,12 +700,24 @@ finishBtn.addEventListener('click', () => {
             else if (v === 'close') close++;
             else wrong++;
         });
+
+        const total = sessionWords.length;
+
+        // Если ВСЕ ответы неверны — не засчитываем попытку
+        if (wrong === total) {
+            screen = 'results';
+            renderResults();
+            return;
+        }
+
+        commitProgress();
+
         const now = new Date();
         const dateStr = now.toLocaleString('ru-RU', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
-        pushHistory(currentLevel, { date: dateStr, correct, close, wrong, total: sessionWords.length });
+        pushHistory(currentLevel, { date: dateStr, correct, close, wrong, total });
 
         screen = 'results';
         renderResults();
