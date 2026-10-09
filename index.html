@@ -283,6 +283,7 @@
             align-content: start;
         }
 
+        /* Кнопка уровня — по умолчанию СЕРАЯ */
         .level-btn {
             width: 120px;
             height: 120px;
@@ -291,23 +292,48 @@
             font-family: inherit;
             font-size: 32px;
             font-weight: 700;
-            color: #fff;
+            color: rgba(255,255,255,0.55);
+            background: #e0e0e0;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.1s, filter 0.15s;
+            transition: transform 0.1s, background 0.15s, color 0.15s;
         }
-        .level-btn:hover { filter: brightness(1.08); }
+        .level-btn:hover { background: #d5d5d5; }
         .level-btn:active { transform: scale(0.97); }
 
-        .level-btn[data-level="B1"] { color: #000; }
+        /* Активная — цветная, БЕЛЫЙ текст */
+        .level-btn.active { color: #fff; }
 
-        .level-btn.disabled {
+        /* B1 активная — чёрный текст */
+        .level-btn.active[data-level="B1"] { color: #000; }
+
+        /* Большая кнопка «Начать тренировку» */
+        .start-btn {
+            margin-left: 2em;
+            margin-top: 1.25em;
+            width: 396px;
+            max-width: calc(100% - 2em);
+            height: 72px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.15s;
+        }
+        .start-btn:hover { filter: brightness(1.08); }
+        .start-btn:active { transform: scale(0.98); }
+        .start-btn[data-level="B1"] { color: #000; }
+
+        .start-btn.disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .level-btn.disabled:hover { filter: none; }
+        .start-btn.disabled:hover { filter: none; }
 
         @media (max-width: 720px) {
             .levels-grid {
@@ -318,6 +344,12 @@
             .level-btn {
                 width: 96px; height: 96px;
                 font-size: 26px;
+            }
+            .start-btn {
+                margin-left: 1em;
+                width: calc(3 * 96px + 2 * 0.6em);
+                height: 60px;
+                font-size: 18px;
             }
         }
 
@@ -333,6 +365,13 @@
                 aspect-ratio: 1 / 1;
                 height: auto;
                 font-size: 24px;
+            }
+            .start-btn {
+                margin-left: 0.5em;
+                width: calc(100% - 1em);
+                max-width: 340px;
+                height: 54px;
+                font-size: 16px;
             }
         }
 
