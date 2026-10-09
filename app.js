@@ -1,5 +1,5 @@
 /* Wordlist — логика приложения.
-   Зависит от a1.js (WORDS_A1), a2.js (WORDS_A2), b1.js (WORDS_B1). */
+   Зависит от a1.js (WORDS_A1), a2.js (WORDS_A2), b1.js (WORDS_B1), b2.js (WORDS_B2). */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -20,7 +20,7 @@ const levels = [
     { code: 'A1', enabled: true  },
     { code: 'A2', enabled: true  },
     { code: 'B1', enabled: true  },
-    { code: 'B2', enabled: false },
+    { code: 'B2', enabled: true  },
     { code: 'C1', enabled: false },
     { code: 'C2', enabled: false },
 ];
@@ -29,13 +29,16 @@ const levelColors = {
     A1: '#e57373',
     A2: '#e6a23c',
     B1: '#f5c518',
-    B2: '#e0e0e0', C1: '#e0e0e0', C2: '#e0e0e0',
+    B2: '#8e6bd1',
+    C1: '#e0e0e0',
+    C2: '#e0e0e0',
 };
 
 const BANKS = {
     A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
     A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
     B1: typeof WORDS_B1 !== 'undefined' ? WORDS_B1 : null,
+    B2: typeof WORDS_B2 !== 'undefined' ? WORDS_B2 : null,
 };
 
 let sessionWords = [];
@@ -249,41 +252,51 @@ function renderLevelTabs() {
     });
 }
 
-/* ===== Главный экран ===== */
+/* ===== Главный экран: сетка уровней + кнопка старта ===== */
 function renderHome() {
-    const enabled = levels.filter(l => l.enabled);
+    const buttonsHtml = levels.map(lvl => {
+        const hasBank = !!BANKS[lvl.code];
+        const isActive = lvl.code === currentLevel && hasBank;
 
-    const buttonsHtml = enabled.map(lvl => {
-        const isActive = lvl.code === currentLevel;
-        const cls = isActive ? 'level-btn active' : 'level-btn';
-        const style = isActive
-            ? `background:${levelColors[lvl.code] || '#e0e0e0'};`
-            : '';
-        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
+        let cls = 'level-btn';
+        let style = '';
+
+        if (!hasBank) {
+            cls += ' disabled';
+        } else if (isActive) {
+            cls += ' active';
+            style = `background:${levelColors[lvl.code] || '#e0e0e0'};`;
+        }
+
+        const disabled = hasBank ? '' : 'disabled';
+        return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
     }).join('');
 
     const hasBank = !!BANKS[currentLevel];
     const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
-        <div class="levels-grid">${buttonsHtml}</div>
-        <button class="${startCls}" id="startBtn">
-            Начать тренировку
-        </button>
+        <div class="home-layout">
+            <div class="levels-grid">${buttonsHtml}</div>
+            <button class="${startCls}" id="startBtn">
+                Начать тренировку
+            </button>
+        </div>
     `;
 
-    // Клик по кнопке уровня — ТОЛЬКО выбор
+    // Клик по кнопке уровня — только выбор
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (btn.disabled) return;
             const lvl = btn.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
             renderHome();
-            updateProgressBar();   // обновляем иконку уровня и счётчик
+            updateProgressBar();
         });
     });
 
-    // Клик по «Начать тренировку» — старт
+    // Клик по «Начать тренировку»
     document.getElementById('startBtn').addEventListener('click', () => {
         if (!BANKS[currentLevel]) {
             alert('База для уровня ' + currentLevel + ' ещё не подключена.');
@@ -766,7 +779,6 @@ finishBtn.addEventListener('click', () => {
 
         const total = sessionWords.length;
 
-        // Если ВСЕ ответы неверны — не засчитываем попытку
         if (wrong === total) {
             screen = 'results';
             renderResults();
