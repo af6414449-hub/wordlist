@@ -618,12 +618,22 @@ function setupHintInput(inp) {
     const lockLen = hintLockLength(correct);
     const visiblePart = buildHintMask(correct).replace(/\*/g, '');
 
-    /* Каретка — сразу после видимых символов (перед первой звездой) */
+    // Сколько символов ввёл пользователь (0 = только маска)
+    let userTyped = 0;
+    {
+        // считаем ведущие не-звёзды после lockLen
+        for (let i = lockLen; i < inp.value.length; i++) {
+            if (inp.value[i] !== '*') userTyped++;
+            else break;
+        }
+    }
+
+    const caretPos = () => lockLen + userTyped;
+
     const putCaret = () => {
-        try { inp.setSelectionRange(lockLen, lockLen); } catch (_) {}
+        try { inp.setSelectionRange(caretPos(), caretPos()); } catch (_) {}
     };
 
-    /* Приводим значение к корректному виду */
     const fixValue = (value) => {
         let v = value;
 
@@ -632,43 +642,57 @@ function setupHintInput(inp) {
         if (!v.startsWith(visiblePart)) {
             v = visiblePart + v.slice(lockLen);
         }
-
         if (v.length < lockLen) {
             v = visiblePart;
         }
-
         if (v.length < maxLen) {
             v = v + '*'.repeat(maxLen - v.length);
         }
-
         return v;
     };
 
-    /* Вставка одного символа — заменяет первую звезду */
+    const recalcUserTyped = () => {
+        let leading = 0;
+        for (let i = lockLen; i < inp.value.length; i++) {
+            if (inp.value[i] !== '*') leading++;
+            else break;
+        }
+        userTyped = leading;
+    };
+
     const applyInsert = (char) => {
         let v = inp.value;
-        v = v.slice(0, lockLen) + char + v.slice(lockLen + 1);
+        const pos = lockLen + userTyped;
+        if (pos >= maxLen) {
+            putCaret();
+            return;
+        }
+        v = v.slice(0, pos) + char + v.slice(pos + 1);
         inp.value = fixValue(v);
+        userTyped++;
         userAnswers[idx] = inp.value;
         putCaret();
     };
 
-    /* Backspace — стирает символ слева от lockLen (первую введённую букву) */
     const applyBackspace = () => {
-        let v = inp.value;
-        if (v[lockLen] !== '*' && v[lockLen] !== undefined) {
-            v = v.slice(0, lockLen) + '*' + v.slice(lockLen + 1);
-            inp.value = fixValue(v);
-            userAnswers[idx] = inp.value;
+        if (userTyped === 0) {
+            putCaret();
+            return;
         }
+        let v = inp.value;
+        const pos = lockLen + userTyped - 1;
+        v = v.slice(0, pos) + '*' + v.slice(pos + 1);
+        inp.value = fixValue(v);
+        userTyped--;
+        userAnswers[idx] = inp.value;
         putCaret();
     };
 
-    /* Первичная настройка */
+    // Первичная настройка
     inp.value = fixValue(inp.value);
+    recalcUserTyped();
     userAnswers[idx] = inp.value;
 
-    /* Управление вводом */
     inp.addEventListener('beforeinput', (e) => {
         const type = e.inputType;
 
@@ -696,14 +720,13 @@ function setupHintInput(inp) {
         }
     });
 
-    /* Страховка на случай, если beforeinput не сработал */
     inp.addEventListener('input', () => {
         inp.value = fixValue(inp.value);
+        recalcUserTyped();
         userAnswers[idx] = inp.value;
         putCaret();
     });
 
-    /* Клавиши навигации — каретка всегда перед первой звездой */
     inp.addEventListener('keydown', (e) => {
         if (e.key === 'Home' || e.key === 'ArrowLeft' ||
             e.key === 'ArrowRight' || e.key === 'End') {
@@ -760,7 +783,14 @@ function focusCurrentInput(scrollIfNeeded) {
 
     if (el.dataset.hint === '1') {
         const lockLen = hintLockLength(sessionWords[currentPerson].en);
-        try { el.setSelectionRange(lockLen, lockLen); } catch (_) {}
+        // Каретка — сразу после видимых символов + уже введённых пользователем
+        let userTyped = 0;
+        for (let i = lockLen; i < el.value.length; i++) {
+            if (el.value[i] !== '*') userTyped++;
+            else break;
+        }
+        const pos = lockLen + userTyped;
+        try { el.setSelectionRange(pos, pos); } catch (_) {}
     } else {
         const val = el.value;
         try { el.setSelectionRange(val.length, val.length); } catch (_) {}
