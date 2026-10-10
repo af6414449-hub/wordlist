@@ -618,113 +618,57 @@ function setupHintInput(inp) {
     const lockLen = hintLockLength(correct);
     const visiblePart = buildHintMask(correct).replace(/\*/g, '');
 
-    // Сколько символов ввёл пользователь (0 = только маска)
-    let userTyped = 0;
-    {
-        // считаем ведущие не-звёзды после lockLen
-        for (let i = lockLen; i < inp.value.length; i++) {
-            if (inp.value[i] !== '*') userTyped++;
+    /* Каретка — сразу после видимых + введённых символов */
+    const countUserTyped = (v) => {
+        let n = 0;
+        for (let i = lockLen; i < v.length; i++) {
+            if (v[i] !== '*') n++;
             else break;
         }
-    }
+        return n;
+    };
 
-    const caretPos = () => lockLen + userTyped;
-
+    const caretPos = () => lockLen + countUserTyped(inp.value);
     const putCaret = () => {
         try { inp.setSelectionRange(caretPos(), caretPos()); } catch (_) {}
     };
 
-    const fixValue = (value) => {
-        let v = value;
-
-        if (v.length > maxLen) v = v.slice(0, maxLen);
-
-        if (!v.startsWith(visiblePart)) {
-            v = visiblePart + v.slice(lockLen);
-        }
-        if (v.length < lockLen) {
-            v = visiblePart;
-        }
-        if (v.length < maxLen) {
-            v = v + '*'.repeat(maxLen - v.length);
-        }
-        return v;
-    };
-
-    const recalcUserTyped = () => {
-        let leading = 0;
-        for (let i = lockLen; i < inp.value.length; i++) {
-            if (inp.value[i] !== '*') leading++;
+    /* Приводим значение к корректному виду: visible + введённые + звёзды */
+    const normalizeValue = (v) => {
+        let userChars = '';
+        for (let i = lockLen; i < v.length; i++) {
+            if (v[i] !== '*') userChars += v[i];
             else break;
         }
-        userTyped = leading;
+        userChars = userChars.slice(0, maxLen - lockLen);
+        const stars = '*'.repeat(Math.max(0, maxLen - lockLen - userChars.length));
+        return visiblePart + userChars + stars;
     };
 
-    const applyInsert = (char) => {
-        let v = inp.value;
-        const pos = lockLen + userTyped;
-        if (pos >= maxLen) {
-            putCaret();
-            return;
-        }
-        v = v.slice(0, pos) + char + v.slice(pos + 1);
-        inp.value = fixValue(v);
-        userTyped++;
-        userAnswers[idx] = inp.value;
+    const setValue = (v) => {
+        inp.value = v;
+        userAnswers[idx] = v;
         putCaret();
     };
 
-    const applyBackspace = () => {
-        if (userTyped === 0) {
-            putCaret();
-            return;
-        }
-        let v = inp.value;
-        const pos = lockLen + userTyped - 1;
-        v = v.slice(0, pos) + '*' + v.slice(pos + 1);
-        inp.value = fixValue(v);
-        userTyped--;
-        userAnswers[idx] = inp.value;
-        putCaret();
-    };
+    /* Первичная настройка */
+    setValue(normalizeValue(inp.value));
 
-    // Первичная настройка
-    inp.value = fixValue(inp.value);
-    recalcUserTyped();
-    userAnswers[idx] = inp.value;
-
-    inp.addEventListener('beforeinput', (e) => {
-        const type = e.inputType;
-
-        if (type === 'insertFromPaste' ||
-            type === 'insertFromDrop' ||
-            type === 'deleteByCut' ||
-            type === 'deleteByDrag') {
-            e.preventDefault();
-            return;
-        }
-
-        if (type.startsWith('insert') && e.data) {
-            e.preventDefault();
-            applyInsert(e.data);
-            return;
-        }
-
-        if (type === 'deleteContentBackward' ||
-            type === 'deleteContentForward' ||
-            type === 'deleteWordBackward' ||
-            type === 'deleteWordForward') {
-            e.preventDefault();
-            applyBackspace();
-            return;
-        }
-    });
-
+    /* Единственный обработчик — input.
+       Читаем сырое значение, приводим к маске, обновляем. */
     inp.addEventListener('input', () => {
-        inp.value = fixValue(inp.value);
-        recalcUserTyped();
-        userAnswers[idx] = inp.value;
-        putCaret();
+        let raw = inp.value;
+
+        if (raw.length > maxLen) raw = raw.slice(0, maxLen);
+
+        if (!raw.startsWith(visiblePart)) {
+            raw = visiblePart + raw.slice(lockLen);
+        }
+        if (raw.length < lockLen) {
+            raw = visiblePart;
+        }
+
+        setValue(normalizeValue(raw));
     });
 
     inp.addEventListener('keydown', (e) => {
@@ -783,7 +727,6 @@ function focusCurrentInput(scrollIfNeeded) {
 
     if (el.dataset.hint === '1') {
         const lockLen = hintLockLength(sessionWords[currentPerson].en);
-        // Каретка — сразу после видимых символов + уже введённых пользователем
         let userTyped = 0;
         for (let i = lockLen; i < el.value.length; i++) {
             if (el.value[i] !== '*') userTyped++;
