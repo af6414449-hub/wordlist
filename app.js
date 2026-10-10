@@ -79,10 +79,7 @@ const progressCount = document.getElementById('progressCount');
 const homeLevelIcon = document.getElementById('homeLevelIcon');
 const levelsTabs    = document.getElementById('levelsTabs');
 
-/* ===== Настройки =====
-   wordlist_hints  — показывать первую букву
-   wordlist_length — показывать длину слова (звёздочки)
-*/
+/* ===== Настройки ===== */
 const HINTS_KEY  = 'wordlist_hints';
 const LENGTH_KEY = 'wordlist_length';
 
@@ -156,7 +153,6 @@ function updateCheckCols() {
 }
 
 /* ===== Подсказка ===== */
-/* Видимая часть (первая буква, если включено) */
 function buildHintVisible(correctAnswer) {
     if (!loadHints()) return '';
     const s = correctAnswer || '';
@@ -166,21 +162,18 @@ function buildHintVisible(correctAnswer) {
     return s[0] || '';
 }
 
-/* Полная маска: видимая часть + звёзды (если длина включена) */
 function buildHintMask(correctAnswer) {
     const s = correctAnswer || '';
     const visible = buildHintVisible(s);
     const withLength = loadLength();
 
     if (!withLength) {
-        // Длину не показываем — оставляем только видимую часть
         return visible;
     }
     const stars = '*'.repeat(Math.max(0, s.length - visible.length));
     return visible + stars;
 }
 
-/* Сколько символов «заперто» (нельзя стереть) */
 function hintLockLength(correctAnswer) {
     return buildHintVisible(correctAnswer).length;
 }
@@ -642,7 +635,6 @@ function setupHintInput(inp) {
     const visiblePart = buildHintVisible(correct);
     const withLength = loadLength();
 
-    /* Считаем, сколько символов ввёл пользователь (ведущие не-звёзды после lockLen) */
     const countUserTyped = (v) => {
         let n = 0;
         for (let i = lockLen; i < v.length; i++) {
@@ -659,17 +651,20 @@ function setupHintInput(inp) {
     };
     const putCaretSoon = () => setTimeout(putCaret, 0);
 
-    /* Приводим значение к корректному виду.
-       Если длина выключена — просто видимая часть + введённое, без звёзд. */
     const normalizeValue = (v) => {
         let userChars = '';
         for (let i = lockLen; i < v.length; i++) {
             if (v[i] !== '*') userChars += v[i];
             else break;
         }
-        userChars = userChars.slice(0, maxLen - lockLen);
+
+        // Обрезаем пользовательские символы ТОЛЬКО если включена длина слова
+        if (withLength) {
+            userChars = userChars.slice(0, maxLen - lockLen);
+        }
 
         if (!withLength) {
+            // Без длины: видимая часть + введённые, без звёзд
             return visiblePart + userChars;
         }
         const stars = '*'.repeat(Math.max(0, maxLen - lockLen - userChars.length));
@@ -689,8 +684,10 @@ function setupHintInput(inp) {
     inp.addEventListener('input', () => {
         let raw = inp.value;
 
-        // Обрезаем по длине
-        if (raw.length > maxLen) raw = raw.slice(0, maxLen);
+        // Обрезаем общую длину ТОЛЬКО если показываем длину слова
+        if (withLength && raw.length > maxLen) {
+            raw = raw.slice(0, maxLen);
+        }
 
         // Восстанавливаем видимую часть, если пользователь её тронул
         if (!raw.startsWith(visiblePart)) {
@@ -948,7 +945,6 @@ function renderSettings() {
 
     /* Клик по всей плашке «Показывать первую букву» */
     document.getElementById('rowHints').addEventListener('click', (e) => {
-        // Игнорируем клик внутри ползунка — обработается сам (input change)
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('hintsToggle');
         input.checked = !input.checked;
@@ -971,7 +967,7 @@ function renderSettings() {
 
     /* Клик по всей плашке «Слов за тренировку» */
     document.getElementById('rowSize').addEventListener('click', (e) => {
-        if (e.target.closest('.size-btn')) return; // сама кнопка обработает
+        if (e.target.closest('.size-btn')) return;
         sessionSize = (sessionSize === 20) ? 40 :
                       (sessionSize === 40) ? 60 : 20;
         saveSessionSize(sessionSize);
