@@ -610,7 +610,7 @@ function renderCheck() {
     updateHeader();
 }
 
-/* ===== Режим подсказки: ввод поверх звёзд слева направо ===== */
+/* ===== Режим подсказки ===== */
 function setupHintInput(inp) {
     const idx = Number(inp.dataset.index);
     const correct = sessionWords[idx].en;
@@ -618,7 +618,6 @@ function setupHintInput(inp) {
     const lockLen = hintLockLength(correct);
     const visiblePart = buildHintMask(correct).replace(/\*/g, '');
 
-    /* Каретка — сразу после видимых + введённых символов */
     const countUserTyped = (v) => {
         let n = 0;
         for (let i = lockLen; i < v.length; i++) {
@@ -629,11 +628,16 @@ function setupHintInput(inp) {
     };
 
     const caretPos = () => lockLen + countUserTyped(inp.value);
+
     const putCaret = () => {
         try { inp.setSelectionRange(caretPos(), caretPos()); } catch (_) {}
     };
 
-    /* Приводим значение к корректному виду: visible + введённые + звёзды */
+    /* Отложенная установка каретки — после того, как браузер поставит свою */
+    const putCaretSoon = () => {
+        setTimeout(putCaret, 0);
+    };
+
     const normalizeValue = (v) => {
         let userChars = '';
         for (let i = lockLen; i < v.length; i++) {
@@ -648,14 +652,13 @@ function setupHintInput(inp) {
     const setValue = (v) => {
         inp.value = v;
         userAnswers[idx] = v;
-        putCaret();
     };
 
     /* Первичная настройка */
     setValue(normalizeValue(inp.value));
+    putCaretSoon();
 
-    /* Единственный обработчик — input.
-       Читаем сырое значение, приводим к маске, обновляем. */
+    /* Обработчик ввода */
     inp.addEventListener('input', () => {
         let raw = inp.value;
 
@@ -669,8 +672,10 @@ function setupHintInput(inp) {
         }
 
         setValue(normalizeValue(raw));
+        putCaretSoon();
     });
 
+    /* Не даём перемещать каретку стрелками */
     inp.addEventListener('keydown', (e) => {
         if (e.key === 'Home' || e.key === 'ArrowLeft' ||
             e.key === 'ArrowRight' || e.key === 'End') {
@@ -684,10 +689,10 @@ function setupHintInput(inp) {
     inp.addEventListener('cut',   (e) => e.preventDefault());
     inp.addEventListener('drop',  (e) => e.preventDefault());
 
-    inp.addEventListener('focus', putCaret);
-    inp.addEventListener('click', putCaret);
+    inp.addEventListener('focus', putCaretSoon);
+    inp.addEventListener('click', putCaretSoon);
 
-    putCaret();
+    putCaretSoon();
 }
 
 function handleCheckKey(e) {
