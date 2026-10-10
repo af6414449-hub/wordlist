@@ -128,7 +128,9 @@ function levenshtein(a, b) {
 }
 
 function evaluate(userAnswer, correctAnswer) {
-    const u = normalize(userAnswer);
+    // Звёздочки в ответе убираем (это просто визуальные заглушки)
+    const cleaned = (userAnswer || '').replace(/\*/g, '');
+    const u = normalize(cleaned);
     const c = normalize(correctAnswer);
     if (!u) return 'wrong';
     if (u === c) return 'correct';
@@ -141,13 +143,24 @@ function updateCheckCols() {
     CHECK_COLS = (window.innerWidth <= 560) ? 3 : 5;
 }
 
-/* Подсказка */
-function buildHint(correctAnswer) {
+/* ===== Подсказка ===== */
+/* Показываем первые N символов + звёзды до полной длины */
+function buildHintMask(correctAnswer) {
     const s = correctAnswer || '';
     if (!s) return '';
-    if (s.startsWith('to ') && s.length > 3)  return 'to ' + s[3];
-    if (s.startsWith('the ') && s.length > 4) return 'the ' + s[4];
-    return s[0] || '';
+
+    let visible = '';
+    if (s.startsWith('to ') && s.length > 3)  visible = 'to ' + s[3];
+    else if (s.startsWith('the ') && s.length > 4) visible = 'the ' + s[4];
+    else visible = s[0] || '';
+
+    const stars = '*'.repeat(Math.max(0, s.length - visible.length));
+    return visible + stars;
+}
+
+/* Первые видимые символы — их стереть нельзя */
+function hintLockLength(correctAnswer) {
+    return buildHintMask(correctAnswer).replace(/\*/g, '').length;
 }
 
 /* ===== Прогресс ===== */
@@ -328,7 +341,6 @@ function renderHome() {
         </div>
     `;
 
-    // Клик по уровню — только выбор
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.disabled) return;
@@ -340,7 +352,6 @@ function renderHome() {
         });
     });
 
-    // Клик по «Начать тренировку»
     document.getElementById('startBtn').addEventListener('click', () => {
         if (!BANKS[currentLevel]) {
             alert('База для уровня ' + currentLevel + ' ещё не подключена.');
@@ -529,7 +540,7 @@ function goToCheck() {
 
     const hintsOn = loadHints();
     userAnswers = sessionWords.map(item => {
-        if (hintsOn) return buildHint(item.en);
+        if (hintsOn) return buildHintMask(item.en);
         return '';
     });
 
@@ -539,6 +550,8 @@ function goToCheck() {
 
 /* ===== Экран проверки ===== */
 function renderCheck() {
+    const hintsOn = loadHints();
+
     const cellsHtml = sessionWords.map((item, i) => {
         const answer = userAnswers[i] || '';
         const cls = ['check-input'];
@@ -558,6 +571,7 @@ function renderCheck() {
                     type="text"
                     value="${answer.replace(/"/g, '&quot;')}"
                     data-index="${i}"
+                    data-hint="${hintsOn && checkPhase === 'input' ? '1' : '0'}"
                     ${disabled}
                 >
             </div>
@@ -589,10 +603,142 @@ function renderCheck() {
             });
 
             inp.addEventListener('keydown', handleCheckKey);
+
+            /* ===== Режим подсказки: звёзды, запрет правки левой части ===== */
+            if (inp.dataset.hint === '1') {
+                setupHintInput(inp);
+            }
         });
     }
 
     updateHeader();
+}
+
+/* Настраивает поле в режиме подсказки */
+function setupHintInput(inp) {
+    const idx = Number(inp.dataset.index);
+    const correct = sessionWords[idx].en;
+    const maxLen = correct.length;
+    const lockLen = hintLockLength(correct);
+
+    const visiblePart = buildHintMask(correct).replace(/\*/g, '');
+
+    const putCaretAtEnd = () => {
+        try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
+    };
+
+    /* Приводим значение к корректному виду:
+       - первые lockLen символов = visiblePart
+       - остаток = либо звёзды, либо буквы пользователя
+       - общая длина = maxLen */
+    const fixValue = (value) => {
+        let v = value;
+
+        // Обрезаем до maxLen
+        if (v.length > maxLen) v = v.slice(0, maxLen);
+
+        // Если пользователь пытается изменить "видимую" часть — восстанавливаем её
+        if (!v.startsWith(visiblePart)) {
+            v = visiblePart + v.slice(lockLen);
+        }
+
+        // Если v короче lockLen (стёр что-то из видимой) — восстановим
+        if (v.length < lockLen) {
+            v = visiblePart;
+        }
+
+        // Добиваем звёздами до maxLen
+        if (v.length < maxLen) {
+            v = v + '*'.repeat(maxLen - v.length);
+        }
+
+        return v;
+    };
+
+    /* Первичная настройка */
+    inp.value = fixValue(inp.value);
+    userAnswers[idx] = inp.value;
+
+    /* Ввод: разрешаем печатать поверх звёзд */
+    inp.addEventListener('beforeinput', (e) => {
+        const type = e.inputType;
+
+        // Запрещаем вставку из буфера, drag&drop, вырезание
+        if (type === 'insertFromPaste' ||
+            type === 'insertFromDrop' ||
+            type === 'deleteByCut' ||
+            type === 'deleteByDrag') {
+            e.preventDefault();
+            return;
+        }
+
+        // Backspace / Delete — только если длина > lockLen
+        if (type === 'deleteContentBackward' ||
+            type === 'deleteContentForward' ||
+            type === 'deleteWordBackward' ||
+            type === 'deleteWordForward') {
+            if (inp.value.length <= lockLen) {
+                e.preventDefault();
+                return;
+            }
+            // Нельзя стереть "видимую" часть — курсор не должен заходить в неё
+            if (inp.selectionStart !== null &&
+                inp.selectionEnd !== null &&
+                inp.selectionStart === inp.selectionEnd &&
+                inp.selectionStart <= lockLen) {
+                e.preventDefault();
+                return;
+            }
+        }
+
+        // Вставка букв — только в конец
+        if (type.startsWith('insert')) {
+            if (inp.selectionStart !== null &&
+                inp.selectionEnd !== null &&
+                inp.selectionStart < inp.value.length) {
+                e.preventDefault();
+                putCaretAtEnd();
+            }
+        }
+    });
+
+    /* После любого изменения — приводим значение к корректному виду */
+    inp.addEventListener('input', () => {
+        inp.value = fixValue(inp.value);
+        userAnswers[idx] = inp.value;
+        putCaretAtEnd();
+    });
+
+    /* Не даём перемещать каретку в "запертую" зону */
+    inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Home') {
+            e.preventDefault();
+            putCaretAtEnd();
+            return;
+        }
+        if (e.key === 'ArrowLeft') {
+            // Разрешаем двигаться внутри вводимой части, но не в "запертую"
+            if (inp.selectionStart !== null && inp.selectionStart <= lockLen) {
+                e.preventDefault();
+                putCaretAtEnd();
+            }
+            return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'End') {
+            e.preventDefault();
+            putCaretAtEnd();
+            return;
+        }
+    });
+
+    inp.addEventListener('paste', (e) => e.preventDefault());
+    inp.addEventListener('cut',   (e) => e.preventDefault());
+    inp.addEventListener('drop',  (e) => e.preventDefault());
+
+    inp.addEventListener('focus', putCaretAtEnd);
+    inp.addEventListener('click', putCaretAtEnd);
+
+    putCaretAtEnd();
 }
 
 function handleCheckKey(e) {
@@ -630,8 +776,13 @@ function focusCurrentInput(scrollIfNeeded) {
         el.focus();
     }
 
-    const val = el.value;
-    try { el.setSelectionRange(val.length, val.length); } catch (_) {}
+    if (el.dataset.hint === '1') {
+        // В режиме подсказки каретка всегда в конце
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
+    } else {
+        const val = el.value;
+        try { el.setSelectionRange(val.length, val.length); } catch (_) {}
+    }
 
     if (scrollIfNeeded) scrollCurrentInputIntoView();
 }
@@ -686,8 +837,10 @@ function renderResults() {
         else if (verdict === 'close') close++;
         else wrong++;
 
-        const displayUser = userAns.trim() ? userAns : '—';
-        const userCls = userAns.trim() ? verdict : 'empty';
+        // В результатах тоже убираем звёздочки
+        const displayUserRaw = userAns.replace(/\*/g, '').trim();
+        const displayUser = displayUserRaw ? displayUserRaw : '—';
+        const userCls = displayUserRaw ? verdict : 'empty';
 
         return `
             <tr>
@@ -903,7 +1056,6 @@ finishBtn.addEventListener('click', () => {
     if (screen === 'results') {
         screen = 'home';
         renderHome();
-        return;
     }
 });
 
