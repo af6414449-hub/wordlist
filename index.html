@@ -70,8 +70,6 @@
             flex: 0 0 auto;
             text-decoration: none;
         }
-
-        /* Иконка выбранного уровня вместо домика */
         .level-icon {
             display: inline-flex;
             align-items: center;
@@ -88,13 +86,12 @@
             letter-spacing: -0.02em;
             cursor: pointer;
             transition: background 0.15s, transform 0.1s;
-            padding-bottom: 1px;       /* визуальная компенсация baseline */
+            padding-bottom: 1px;
             transform: none;
         }
         .level-icon:active { transform: scale(0.95); }
         .level-icon[data-level="B1"] { color: #000; }
 
-        /* ===== Прогресс-бар (без иконки) ===== */
         .progress-wrap {
             display: none;
             align-items: center;
@@ -127,7 +124,6 @@
             white-space: nowrap;
         }
 
-        /* ===== Кнопки уровней в шапке истории ===== */
         .levels-tabs {
             display: none;
             align-items: center; gap: 0.3em;
@@ -157,7 +153,6 @@
         }
         .level-tab.active[data-level="B1"] { color: #000; }
 
-        /* ===== Таймер ===== */
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
             margin-left: 0.5em; flex-wrap: wrap;
@@ -174,7 +169,6 @@
             display: inline-block; min-width: 2.6em; text-align: right;
         }
 
-        /* ===== Правый блок ===== */
         .right {
             margin-left: auto;
             display: flex; align-items: center; gap: 0.4em;
@@ -212,7 +206,6 @@
             display: block;
         }
 
-        /* ===== Кнопка по центру ===== */
         .center-slot {
             position: absolute;
             left: 50%;
@@ -238,12 +231,10 @@
         .finish-btn.continue { background: #5dade2; }
         .finish-btn.continue:hover { background: #3498db; }
 
-        /* ===== Режимы шапки ===== */
         .topbar-inner.mode-train .center-slot { display: flex; }
         .topbar-inner.mode-train .right       { display: none !important; }
         .topbar-inner.mode-home  .center-slot { display: none; }
 
-        /* ===== Адаптивность ===== */
         @media (max-width: 720px) {
             .topbar-inner { padding: 0 0.5em 0 0.75em; gap: 0.25em; }
             .brand { margin-right: 0; }
@@ -362,8 +353,6 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
-
-            /* Центрирование по вертикали и горизонтали */
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -436,6 +425,11 @@
             font-size: 15px;
             font-weight: 600;
             color: #212121;
+            cursor: pointer;
+            user-select: none;
+        }
+        .settings-row + .settings-row {
+            margin-top: 0.75em;
         }
 
         .switch {
@@ -444,6 +438,7 @@
             width: 48px;
             height: 26px;
             flex: 0 0 auto;
+            pointer-events: none;
         }
         .switch input {
             opacity: 0;
