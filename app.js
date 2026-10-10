@@ -79,16 +79,29 @@ const progressCount = document.getElementById('progressCount');
 const homeLevelIcon = document.getElementById('homeLevelIcon');
 const levelsTabs    = document.getElementById('levelsTabs');
 
-/* ===== Настройки подсказки ===== */
-const HINTS_KEY = 'wordlist_hints';
+/* ===== Настройки =====
+   wordlist_hints  — показывать первую букву
+   wordlist_length — показывать длину слова (звёздочки)
+*/
+const HINTS_KEY  = 'wordlist_hints';
+const LENGTH_KEY = 'wordlist_length';
 
-function loadHints() {
-    try { return localStorage.getItem(HINTS_KEY) === '1'; }
-    catch (_) { return false; }
+function loadBool(key, def) {
+    try {
+        const v = localStorage.getItem(key);
+        if (v === '1') return true;
+        if (v === '0') return false;
+    } catch (_) {}
+    return def;
 }
-function saveHints(on) {
-    try { localStorage.setItem(HINTS_KEY, on ? '1' : '0'); } catch (_) {}
+function saveBool(key, on) {
+    try { localStorage.setItem(key, on ? '1' : '0'); } catch (_) {}
 }
+
+function loadHints()  { return loadBool(HINTS_KEY, false); }
+function saveHints(v) { saveBool(HINTS_KEY, v); }
+function loadLength() { return loadBool(LENGTH_KEY, false); }
+function saveLength(v){ saveBool(LENGTH_KEY, v); }
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -143,21 +156,33 @@ function updateCheckCols() {
 }
 
 /* ===== Подсказка ===== */
-function buildHintMask(correctAnswer) {
+/* Видимая часть (первая буква, если включено) */
+function buildHintVisible(correctAnswer) {
+    if (!loadHints()) return '';
     const s = correctAnswer || '';
     if (!s) return '';
+    if (s.startsWith('to ') && s.length > 3)  return 'to ' + s[3];
+    if (s.startsWith('the ') && s.length > 4) return 'the ' + s[4];
+    return s[0] || '';
+}
 
-    let visible = '';
-    if (s.startsWith('to ') && s.length > 3)  visible = 'to ' + s[3];
-    else if (s.startsWith('the ') && s.length > 4) visible = 'the ' + s[4];
-    else visible = s[0] || '';
+/* Полная маска: видимая часть + звёзды (если длина включена) */
+function buildHintMask(correctAnswer) {
+    const s = correctAnswer || '';
+    const visible = buildHintVisible(s);
+    const withLength = loadLength();
 
+    if (!withLength) {
+        // Длину не показываем — оставляем только видимую часть
+        return visible;
+    }
     const stars = '*'.repeat(Math.max(0, s.length - visible.length));
     return visible + stars;
 }
 
+/* Сколько символов «заперто» (нельзя стереть) */
 function hintLockLength(correctAnswer) {
-    return buildHintMask(correctAnswer).replace(/\*/g, '').length;
+    return buildHintVisible(correctAnswer).length;
 }
 
 /* ===== Прогресс ===== */
@@ -264,7 +289,7 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Прогресс-бар + иконка уровня в шапке ===== */
+/* ===== Прогресс-бар + иконка уровня ===== */
 function updateProgressBar() {
     const bank = BANKS[currentLevel] || [];
     const total = bank.length;
@@ -535,11 +560,7 @@ function goToCheck() {
     checkPhase = 'input';
     sessionWords = shuffle(sessionWords);
 
-    const hintsOn = loadHints();
-    userAnswers = sessionWords.map(item => {
-        if (hintsOn) return buildHintMask(item.en);
-        return '';
-    });
+    userAnswers = sessionWords.map(item => buildHintMask(item.en));
 
     currentPerson = 0;
     renderCheck();
@@ -548,6 +569,7 @@ function goToCheck() {
 /* ===== Экран проверки ===== */
 function renderCheck() {
     const hintsOn = loadHints();
+    const lengthOn = loadLength();
 
     const cellsHtml = sessionWords.map((item, i) => {
         const answer = userAnswers[i] || '';
@@ -559,6 +581,7 @@ function renderCheck() {
 
         const disabled = (checkPhase === 'result') ? 'disabled' : '';
         const current  = (i === currentPerson && checkPhase === 'input') ? ' current' : '';
+        const hintMode = (hintsOn || lengthOn) && checkPhase === 'input';
 
         return `
             <div class="check-cell${current}" data-index="${i}">
@@ -568,7 +591,7 @@ function renderCheck() {
                     type="text"
                     value="${answer.replace(/"/g, '&quot;')}"
                     data-index="${i}"
-                    data-hint="${hintsOn && checkPhase === 'input' ? '1' : '0'}"
+                    data-hint="${hintMode ? '1' : '0'}"
                     ${disabled}
                 >
             </div>
@@ -616,8 +639,10 @@ function setupHintInput(inp) {
     const correct = sessionWords[idx].en;
     const maxLen = correct.length;
     const lockLen = hintLockLength(correct);
-    const visiblePart = buildHintMask(correct).replace(/\*/g, '');
+    const visiblePart = buildHintVisible(correct);
+    const withLength = loadLength();
 
+    /* Считаем, сколько символов ввёл пользователь (ведущие не-звёзды после lockLen) */
     const countUserTyped = (v) => {
         let n = 0;
         for (let i = lockLen; i < v.length; i++) {
@@ -632,12 +657,10 @@ function setupHintInput(inp) {
     const putCaret = () => {
         try { inp.setSelectionRange(caretPos(), caretPos()); } catch (_) {}
     };
+    const putCaretSoon = () => setTimeout(putCaret, 0);
 
-    /* Отложенная установка каретки — после того, как браузер поставит свою */
-    const putCaretSoon = () => {
-        setTimeout(putCaret, 0);
-    };
-
+    /* Приводим значение к корректному виду.
+       Если длина выключена — просто видимая часть + введённое, без звёзд. */
     const normalizeValue = (v) => {
         let userChars = '';
         for (let i = lockLen; i < v.length; i++) {
@@ -645,6 +668,10 @@ function setupHintInput(inp) {
             else break;
         }
         userChars = userChars.slice(0, maxLen - lockLen);
+
+        if (!withLength) {
+            return visiblePart + userChars;
+        }
         const stars = '*'.repeat(Math.max(0, maxLen - lockLen - userChars.length));
         return visiblePart + userChars + stars;
     };
@@ -662,8 +689,10 @@ function setupHintInput(inp) {
     inp.addEventListener('input', () => {
         let raw = inp.value;
 
+        // Обрезаем по длине
         if (raw.length > maxLen) raw = raw.slice(0, maxLen);
 
+        // Восстанавливаем видимую часть, если пользователь её тронул
         if (!raw.startsWith(visiblePart)) {
             raw = visiblePart + raw.slice(lockLen);
         }
@@ -887,32 +916,69 @@ function renderHistory() {
 
 /* ===== Настройки ===== */
 function renderSettings() {
-    const hintsOn = loadHints();
+    const hintsOn  = loadHints();
+    const lengthOn = loadLength();
 
     view.innerHTML = `
         <div class="settings-area">
             <h1 class="settings-title">Настройки</h1>
 
-            <div class="settings-row">
+            <div class="settings-row" id="rowHints">
                 <label class="switch">
                     <input type="checkbox" id="hintsToggle" ${hintsOn ? 'checked' : ''}>
                     <span class="switch-slider"></span>
                 </label>
-                <span>Подсказка</span>
+                <span>Показывать первую букву</span>
             </div>
 
-            <div class="settings-row" style="margin-top: 0.75em">
+            <div class="settings-row" id="rowLength">
+                <label class="switch">
+                    <input type="checkbox" id="lengthToggle" ${lengthOn ? 'checked' : ''}>
+                    <span class="switch-slider"></span>
+                </label>
+                <span>Показывать длину слова</span>
+            </div>
+
+            <div class="settings-row" id="rowSize">
                 <span>Слов за тренировку</span>
                 <button class="size-btn" id="sizeBtn">${sessionSize}</button>
             </div>
         </div>
     `;
 
+    /* Клик по всей плашке «Показывать первую букву» */
+    document.getElementById('rowHints').addEventListener('click', (e) => {
+        // Игнорируем клик внутри ползунка — обработается сам (input change)
+        if (e.target.closest('.switch')) return;
+        const input = document.getElementById('hintsToggle');
+        input.checked = !input.checked;
+        saveHints(input.checked);
+    });
     document.getElementById('hintsToggle').addEventListener('change', (e) => {
         saveHints(e.target.checked);
     });
 
-    document.getElementById('sizeBtn').addEventListener('click', () => {
+    /* Клик по всей плашке «Показывать длину слова» */
+    document.getElementById('rowLength').addEventListener('click', (e) => {
+        if (e.target.closest('.switch')) return;
+        const input = document.getElementById('lengthToggle');
+        input.checked = !input.checked;
+        saveLength(input.checked);
+    });
+    document.getElementById('lengthToggle').addEventListener('change', (e) => {
+        saveLength(e.target.checked);
+    });
+
+    /* Клик по всей плашке «Слов за тренировку» */
+    document.getElementById('rowSize').addEventListener('click', (e) => {
+        if (e.target.closest('.size-btn')) return; // сама кнопка обработает
+        sessionSize = (sessionSize === 20) ? 40 :
+                      (sessionSize === 40) ? 60 : 20;
+        saveSessionSize(sessionSize);
+        renderSettings();
+    });
+    document.getElementById('sizeBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
         sessionSize = (sessionSize === 20) ? 40 :
                       (sessionSize === 40) ? 60 : 20;
         saveSessionSize(sessionSize);
