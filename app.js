@@ -128,7 +128,6 @@ function levenshtein(a, b) {
 }
 
 function evaluate(userAnswer, correctAnswer) {
-    // Звёздочки в ответе убираем (это просто визуальные заглушки)
     const cleaned = (userAnswer || '').replace(/\*/g, '');
     const u = normalize(cleaned);
     const c = normalize(correctAnswer);
@@ -144,7 +143,6 @@ function updateCheckCols() {
 }
 
 /* ===== Подсказка ===== */
-/* Показываем первые N символов + звёзды до полной длины */
 function buildHintMask(correctAnswer) {
     const s = correctAnswer || '';
     if (!s) return '';
@@ -158,7 +156,6 @@ function buildHintMask(correctAnswer) {
     return visible + stars;
 }
 
-/* Первые видимые символы — их стереть нельзя */
 function hintLockLength(correctAnswer) {
     return buildHintMask(correctAnswer).replace(/\*/g, '').length;
 }
@@ -604,7 +601,6 @@ function renderCheck() {
 
             inp.addEventListener('keydown', handleCheckKey);
 
-            /* ===== Режим подсказки: звёзды, запрет правки левой части ===== */
             if (inp.dataset.hint === '1') {
                 setupHintInput(inp);
             }
@@ -614,40 +610,33 @@ function renderCheck() {
     updateHeader();
 }
 
-/* Настраивает поле в режиме подсказки */
+/* ===== Режим подсказки: ввод поверх звёзд слева направо ===== */
 function setupHintInput(inp) {
     const idx = Number(inp.dataset.index);
     const correct = sessionWords[idx].en;
     const maxLen = correct.length;
     const lockLen = hintLockLength(correct);
-
     const visiblePart = buildHintMask(correct).replace(/\*/g, '');
 
-    const putCaretAtEnd = () => {
-        try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
+    /* Каретка — сразу после видимых символов (перед первой звездой) */
+    const putCaret = () => {
+        try { inp.setSelectionRange(lockLen, lockLen); } catch (_) {}
     };
 
-    /* Приводим значение к корректному виду:
-       - первые lockLen символов = visiblePart
-       - остаток = либо звёзды, либо буквы пользователя
-       - общая длина = maxLen */
+    /* Приводим значение к корректному виду */
     const fixValue = (value) => {
         let v = value;
 
-        // Обрезаем до maxLen
         if (v.length > maxLen) v = v.slice(0, maxLen);
 
-        // Если пользователь пытается изменить "видимую" часть — восстанавливаем её
         if (!v.startsWith(visiblePart)) {
             v = visiblePart + v.slice(lockLen);
         }
 
-        // Если v короче lockLen (стёр что-то из видимой) — восстановим
         if (v.length < lockLen) {
             v = visiblePart;
         }
 
-        // Добиваем звёздами до maxLen
         if (v.length < maxLen) {
             v = v + '*'.repeat(maxLen - v.length);
         }
@@ -655,15 +644,34 @@ function setupHintInput(inp) {
         return v;
     };
 
+    /* Вставка одного символа — заменяет первую звезду */
+    const applyInsert = (char) => {
+        let v = inp.value;
+        v = v.slice(0, lockLen) + char + v.slice(lockLen + 1);
+        inp.value = fixValue(v);
+        userAnswers[idx] = inp.value;
+        putCaret();
+    };
+
+    /* Backspace — стирает символ слева от lockLen (первую введённую букву) */
+    const applyBackspace = () => {
+        let v = inp.value;
+        if (v[lockLen] !== '*' && v[lockLen] !== undefined) {
+            v = v.slice(0, lockLen) + '*' + v.slice(lockLen + 1);
+            inp.value = fixValue(v);
+            userAnswers[idx] = inp.value;
+        }
+        putCaret();
+    };
+
     /* Первичная настройка */
     inp.value = fixValue(inp.value);
     userAnswers[idx] = inp.value;
 
-    /* Ввод: разрешаем печатать поверх звёзд */
+    /* Управление вводом */
     inp.addEventListener('beforeinput', (e) => {
         const type = e.inputType;
 
-        // Запрещаем вставку из буфера, drag&drop, вырезание
         if (type === 'insertFromPaste' ||
             type === 'insertFromDrop' ||
             type === 'deleteByCut' ||
@@ -672,61 +680,35 @@ function setupHintInput(inp) {
             return;
         }
 
-        // Backspace / Delete — только если длина > lockLen
+        if (type.startsWith('insert') && e.data) {
+            e.preventDefault();
+            applyInsert(e.data);
+            return;
+        }
+
         if (type === 'deleteContentBackward' ||
             type === 'deleteContentForward' ||
             type === 'deleteWordBackward' ||
             type === 'deleteWordForward') {
-            if (inp.value.length <= lockLen) {
-                e.preventDefault();
-                return;
-            }
-            // Нельзя стереть "видимую" часть — курсор не должен заходить в неё
-            if (inp.selectionStart !== null &&
-                inp.selectionEnd !== null &&
-                inp.selectionStart === inp.selectionEnd &&
-                inp.selectionStart <= lockLen) {
-                e.preventDefault();
-                return;
-            }
-        }
-
-        // Вставка букв — только в конец
-        if (type.startsWith('insert')) {
-            if (inp.selectionStart !== null &&
-                inp.selectionEnd !== null &&
-                inp.selectionStart < inp.value.length) {
-                e.preventDefault();
-                putCaretAtEnd();
-            }
+            e.preventDefault();
+            applyBackspace();
+            return;
         }
     });
 
-    /* После любого изменения — приводим значение к корректному виду */
+    /* Страховка на случай, если beforeinput не сработал */
     inp.addEventListener('input', () => {
         inp.value = fixValue(inp.value);
         userAnswers[idx] = inp.value;
-        putCaretAtEnd();
+        putCaret();
     });
 
-    /* Не даём перемещать каретку в "запертую" зону */
+    /* Клавиши навигации — каретка всегда перед первой звездой */
     inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Home') {
+        if (e.key === 'Home' || e.key === 'ArrowLeft' ||
+            e.key === 'ArrowRight' || e.key === 'End') {
             e.preventDefault();
-            putCaretAtEnd();
-            return;
-        }
-        if (e.key === 'ArrowLeft') {
-            // Разрешаем двигаться внутри вводимой части, но не в "запертую"
-            if (inp.selectionStart !== null && inp.selectionStart <= lockLen) {
-                e.preventDefault();
-                putCaretAtEnd();
-            }
-            return;
-        }
-        if (e.key === 'ArrowRight' || e.key === 'End') {
-            e.preventDefault();
-            putCaretAtEnd();
+            putCaret();
             return;
         }
     });
@@ -735,10 +717,10 @@ function setupHintInput(inp) {
     inp.addEventListener('cut',   (e) => e.preventDefault());
     inp.addEventListener('drop',  (e) => e.preventDefault());
 
-    inp.addEventListener('focus', putCaretAtEnd);
-    inp.addEventListener('click', putCaretAtEnd);
+    inp.addEventListener('focus', putCaret);
+    inp.addEventListener('click', putCaret);
 
-    putCaretAtEnd();
+    putCaret();
 }
 
 function handleCheckKey(e) {
@@ -777,8 +759,8 @@ function focusCurrentInput(scrollIfNeeded) {
     }
 
     if (el.dataset.hint === '1') {
-        // В режиме подсказки каретка всегда в конце
-        try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
+        const lockLen = hintLockLength(sessionWords[currentPerson].en);
+        try { el.setSelectionRange(lockLen, lockLen); } catch (_) {}
     } else {
         const val = el.value;
         try { el.setSelectionRange(val.length, val.length); } catch (_) {}
@@ -837,7 +819,6 @@ function renderResults() {
         else if (verdict === 'close') close++;
         else wrong++;
 
-        // В результатах тоже убираем звёздочки
         const displayUserRaw = userAns.replace(/\*/g, '').trim();
         const displayUser = displayUserRaw ? displayUserRaw : '—';
         const userCls = displayUserRaw ? verdict : 'empty';
