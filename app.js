@@ -1,5 +1,4 @@
-/* Wordlist — логика приложения.
-   Зависит от a1.js (WORDS_A1), a2.js (WORDS_A2), b1.js (WORDS_B1), b2.js (WORDS_B2). */
+/* Wordlist — логика приложения. */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -14,7 +13,10 @@ let CHECK_COLS = 5;
 let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
 
-/* ===== Размер сессии (20 / 40 / 60) ===== */
+/* Снимки попыток — только в памяти */
+let sessionSnapshots = [];   // [{ level, date, correct, close, wrong, total, items }]
+
+/* ===== Размер сессии ===== */
 const SESSION_SIZE_KEY = 'wordlist_size';
 
 function loadSessionSize() {
@@ -24,11 +26,9 @@ function loadSessionSize() {
     } catch (_) {}
     return 20;
 }
-
 function saveSessionSize(v) {
     try { localStorage.setItem(SESSION_SIZE_KEY, String(v)); } catch (_) {}
 }
-
 let sessionSize = loadSessionSize();
 
 function sizeToSeconds(n) {
@@ -166,10 +166,7 @@ function buildHintMask(correctAnswer) {
     const s = correctAnswer || '';
     const visible = buildHintVisible(s);
     const withLength = loadLength();
-
-    if (!withLength) {
-        return visible;
-    }
+    if (!withLength) return visible;
     const stars = '*'.repeat(Math.max(0, s.length - visible.length));
     return visible + stars;
 }
@@ -191,11 +188,9 @@ function loadProgress(level) {
         return { learned: [] };
     }
 }
-
 function saveProgress(level, progress) {
     try { localStorage.setItem(progressKey(level), JSON.stringify(progress)); } catch (_) {}
 }
-
 function resetProgress(level) {
     try { localStorage.removeItem(progressKey(level)); } catch (_) {}
 }
@@ -213,13 +208,11 @@ function loadHistory(level) {
         return [];
     }
 }
-
 function saveHistory(level, list) {
     try {
         localStorage.setItem(historyKey(level), JSON.stringify(list.slice(0, HISTORY_MAX)));
     } catch (_) {}
 }
-
 function pushHistory(level, entry) {
     const list = loadHistory(level);
     list.unshift(entry);
@@ -228,11 +221,13 @@ function pushHistory(level, entry) {
 
 /* ===== Шапка ===== */
 function updateHeader() {
-    historyBtn.classList.toggle('active', screen === 'history');
+    historyBtn.classList.toggle('active', screen === 'history' || screen === 'history-entry');
     settingsBtn.classList.toggle('active', screen === 'settings');
 
-    topbarInner.classList.toggle('mode-home',  screen === 'home' || screen === 'history' || screen === 'settings');
-    topbarInner.classList.toggle('mode-train', screen === 'train' || screen === 'check' || screen === 'results');
+    topbarInner.classList.toggle('mode-home',
+        screen === 'home' || screen === 'history' || screen === 'history-entry' || screen === 'settings');
+    topbarInner.classList.toggle('mode-train',
+        screen === 'train' || screen === 'check' || screen === 'results');
 
     trainSlot.style.display = (screen === 'train' || screen === 'check' || screen === 'results') ? 'flex' : 'none';
 
@@ -240,7 +235,7 @@ function updateHeader() {
     timerWrap.style.display = showTimer ? '' : 'none';
 
     progressWrap.style.display = (screen === 'home') ? 'flex' : 'none';
-    levelsTabs.style.display   = (screen === 'history') ? 'flex' : 'none';
+    levelsTabs.style.display   = (screen === 'history' || screen === 'history-entry') ? 'flex' : 'none';
 
     if (screen === 'home') updateProgressBar();
 
@@ -320,6 +315,7 @@ function renderLevelTabs() {
             renderLevelTabs();
             updateProgressBar();
             if (screen === 'history') renderHistory();
+            if (screen === 'history-entry') { screen = 'history'; renderHistory(); }
         });
     });
 }
@@ -645,7 +641,6 @@ function setupHintInput(inp) {
     };
 
     const caretPos = () => lockLen + countUserTyped(inp.value);
-
     const putCaret = () => {
         try { inp.setSelectionRange(caretPos(), caretPos()); } catch (_) {}
     };
@@ -657,14 +652,10 @@ function setupHintInput(inp) {
             if (v[i] !== '*') userChars += v[i];
             else break;
         }
-
-        // Обрезаем пользовательские символы ТОЛЬКО если включена длина слова
         if (withLength) {
             userChars = userChars.slice(0, maxLen - lockLen);
         }
-
         if (!withLength) {
-            // Без длины: видимая часть + введённые, без звёзд
             return visiblePart + userChars;
         }
         const stars = '*'.repeat(Math.max(0, maxLen - lockLen - userChars.length));
@@ -676,20 +667,15 @@ function setupHintInput(inp) {
         userAnswers[idx] = v;
     };
 
-    /* Первичная настройка */
     setValue(normalizeValue(inp.value));
     putCaretSoon();
 
-    /* Обработчик ввода */
     inp.addEventListener('input', () => {
         let raw = inp.value;
 
-        // Обрезаем общую длину ТОЛЬКО если показываем длину слова
         if (withLength && raw.length > maxLen) {
             raw = raw.slice(0, maxLen);
         }
-
-        // Восстанавливаем видимую часть, если пользователь её тронул
         if (!raw.startsWith(visiblePart)) {
             raw = visiblePart + raw.slice(lockLen);
         }
@@ -701,7 +687,6 @@ function setupHintInput(inp) {
         putCaretSoon();
     });
 
-    /* Не даём перемещать каретку стрелками */
     inp.addEventListener('keydown', (e) => {
         if (e.key === 'Home' || e.key === 'ArrowLeft' ||
             e.key === 'ArrowRight' || e.key === 'End') {
@@ -811,7 +796,7 @@ function commitProgress() {
     saveProgress(currentLevel, prog);
 }
 
-/* ===== Результаты ===== */
+/* ===== Результаты (после сессии) ===== */
 function renderResults() {
     let correct = 0, close = 0, wrong = 0;
 
@@ -874,11 +859,11 @@ function renderHistory() {
     if (!history.length) {
         body = `<div class="history-empty">Пока нет ни одной попытки для уровня ${currentLevel}.</div>`;
     } else {
-        const rows = history.map(rec => {
+        const rows = history.map((rec, i) => {
             const total = rec.total || 0;
             const pct = (n) => total ? Math.round(n / total * 100) : 0;
             return `
-                <tr>
+                <tr data-index="${i}" class="history-row">
                     <td>${rec.date}</td>
                     <td class="ok">${rec.correct} (${pct(rec.correct)}%)</td>
                     <td class="close">${rec.close} (${pct(rec.close)}%)</td>
@@ -905,6 +890,103 @@ function renderHistory() {
     view.innerHTML = `
         <div class="history-area">
             ${body}
+        </div>
+    `;
+
+    // Клик по строке — открыть результаты попытки (из памяти)
+    view.querySelectorAll('.history-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const idx = Number(row.dataset.index);
+            showHistoryEntry(idx);
+        });
+    });
+
+    updateHeader();
+}
+
+/* ===== Просмотр одной попытки из истории (из памяти) ===== */
+function showHistoryEntry(historyIndex) {
+    // Ищем снимок в sessionSnapshots по уровню и порядку совпадения с историей.
+    // История формируется сверху вниз — самые свежие сверху.
+    // sessionSnapshots тоже накапливается сверху вниз в обратном порядке.
+
+    const history = loadHistory(currentLevel);
+
+    // Попробуем найти снимок по точному совпадению состава:
+    // у нас в снимках хранится полная запись с items, ищем тот, у которого
+    // дата совпадает с датой в истории.
+    const rec = history[historyIndex];
+    if (!rec) { renderHistory(); return; }
+
+    const snap = sessionSnapshots.find(s =>
+        s.level === currentLevel && s.date === rec.date
+    );
+
+    if (!snap) {
+        // Снимка нет (например, страница перезагружена) — покажем только статистику
+        const total = rec.total || 0;
+        const pct = (n) => total ? Math.round(n / total * 100) : 0;
+        view.innerHTML = `
+            <div class="results-area">
+                <div class="results-summary">
+                    <span class="pill total">${rec.date} · ${rec.total}</span>
+                    <span class="pill green">${rec.correct} · ${pct(rec.correct)}%</span>
+                    <span class="pill orange">${rec.close} · ${pct(rec.close)}%</span>
+                    <span class="pill red">${rec.wrong} · ${pct(rec.wrong)}%</span>
+                </div>
+                <div class="history-empty" style="margin-top:1em">Детали попытки недоступны — страница была перезагружена.</div>
+            </div>
+        `;
+        updateHeader();
+        return;
+    }
+
+    // Есть снимок — рендерим как обычные результаты
+    let correct = 0, close = 0, wrong = 0;
+
+    const rows = snap.items.map(it => {
+        const userAns = it.userAnswer || '';
+        const verdict = evaluate(userAns, it.en);
+
+        if (verdict === 'correct') correct++;
+        else if (verdict === 'close') close++;
+        else wrong++;
+
+        const displayUserRaw = userAns.replace(/\*/g, '').trim();
+        const displayUser = displayUserRaw ? displayUserRaw : '—';
+        const userCls = displayUserRaw ? verdict : 'empty';
+
+        return `
+            <tr>
+                <td>${it.ru}</td>
+                <td class="${userCls}">${displayUser}</td>
+                <td class="answer-ok">${it.en}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const total = snap.items.length;
+    const pct = (n) => total ? Math.round(n / total * 100) : 0;
+
+    view.innerHTML = `
+        <div class="results-area">
+            <div class="results-summary">
+                <span class="pill total">${snap.date} · ${total}</span>
+                <span class="pill green">${correct} · ${pct(correct)}%</span>
+                <span class="pill orange">${close} · ${pct(close)}%</span>
+                <span class="pill red">${wrong} · ${pct(wrong)}%</span>
+            </div>
+
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Значение</th>
+                        <th>Ваш ответ</th>
+                        <th>Правильный ответ</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
         </div>
     `;
 
@@ -943,7 +1025,6 @@ function renderSettings() {
         </div>
     `;
 
-    /* Клик по всей плашке «Показывать первую букву» */
     document.getElementById('rowHints').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('hintsToggle');
@@ -954,7 +1035,6 @@ function renderSettings() {
         saveHints(e.target.checked);
     });
 
-    /* Клик по всей плашке «Показывать длину слова» */
     document.getElementById('rowLength').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('lengthToggle');
@@ -965,7 +1045,6 @@ function renderSettings() {
         saveLength(e.target.checked);
     });
 
-    /* Клик по всей плашке «Слов за тренировку» */
     document.getElementById('rowSize').addEventListener('click', (e) => {
         if (e.target.closest('.size-btn')) return;
         sessionSize = (sessionSize === 20) ? 40 :
@@ -1011,7 +1090,7 @@ document.getElementById('homeBtn').addEventListener('click', (e) => {
 
 /* ===== Кнопка «Результаты» ===== */
 historyBtn.addEventListener('click', () => {
-    if (screen === 'history') {
+    if (screen === 'history' || screen === 'history-entry') {
         screen = 'home';
         renderHome();
     } else {
@@ -1067,7 +1146,21 @@ finishBtn.addEventListener('click', () => {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
+
+        // Записываем в историю (без деталей)
         pushHistory(currentLevel, { date: dateStr, correct, close, wrong, total });
+
+        // Снимок с деталями — только в памяти
+        sessionSnapshots.unshift({
+            level: currentLevel,
+            date: dateStr,
+            correct, close, wrong, total,
+            items: sessionWords.map((item, i) => ({
+                ru: item.ru,
+                en: item.en,
+                userAnswer: userAnswers[i] || ''
+            }))
+        });
 
         screen = 'results';
         renderResults();
