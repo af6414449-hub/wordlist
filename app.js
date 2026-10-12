@@ -24,6 +24,7 @@ let sessionSnapshots = [];
 
 /* ===== Пользователь ===== */
 let currentUser = null;
+let authMode = 'login';
 
 /* ===== Язык ===== */
 const LANG_KEY = 'wordlist_lang';
@@ -172,6 +173,8 @@ const finishBtn     = document.getElementById('finishBtn');
 const timerWrap     = document.getElementById('timerWrap');
 const timerValue    = document.getElementById('timerValue');
 const historyBtn    = document.getElementById('historyBtn');
+const loginBtn      = document.getElementById('loginBtn');
+const signupBtn     = document.getElementById('signupBtn');
 const settingsBtn   = document.getElementById('settingsBtn');
 const topbarInner   = document.querySelector('.topbar-inner');
 const progressWrap  = document.getElementById('progressWrap');
@@ -179,6 +182,15 @@ const progressFill  = document.getElementById('progressFill');
 const progressCount = document.getElementById('progressCount');
 const homeLevelIcon = document.getElementById('homeLevelIcon');
 const levelsTabs    = document.getElementById('levelsTabs');
+
+/* ===== Модальное окно авторизации ===== */
+const authOverlay  = document.getElementById('authOverlay');
+const authTitle    = document.getElementById('authTitle');
+const authEmail    = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authError    = document.getElementById('authError');
+const authSubmit   = document.getElementById('authSubmit');
+const authCancel   = document.getElementById('authCancel');
 
 /* ===== Настройки подсказок ===== */
 const HINTS_KEY  = 'wordlist_hints';
@@ -337,7 +349,6 @@ async function loadProgress() {
         if (error) console.warn('loadProgress error:', error.message);
         return { learned: [] };
     }
-    // fallback: localStorage
     try {
         const raw = localStorage.getItem(progressKey());
         if (!raw) return { learned: [] };
@@ -359,7 +370,6 @@ async function saveProgress(progress) {
         }, { onConflict: 'user_id,lang,level' });
         if (error) console.warn('saveProgress error:', error.message);
     }
-    // всегда дублируем в localStorage как кэш
     try { localStorage.setItem(progressKey(), JSON.stringify(progress)); } catch (_) {}
 }
 
@@ -424,7 +434,6 @@ async function pushHistory(entry) {
         });
         if (error) console.warn('pushHistory error:', error.message);
     }
-    // кэш в localStorage
     try {
         const raw = localStorage.getItem(historyKey());
         const list = raw ? JSON.parse(raw) : [];
@@ -437,6 +446,17 @@ async function pushHistory(entry) {
 function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history' || screen === 'history-entry');
     settingsBtn.classList.toggle('active', screen === 'settings');
+
+    // Кнопки в шапке: авторизован → «Результаты», нет → «Войти» + «Регистрация»
+    if (currentUser) {
+        historyBtn.style.display = '';
+        loginBtn.style.display = 'none';
+        signupBtn.style.display = 'none';
+    } else {
+        historyBtn.style.display = 'none';
+        loginBtn.style.display = '';
+        signupBtn.style.display = '';
+    }
 
     topbarInner.classList.toggle('mode-home',
         screen === 'home' || screen === 'history' || screen === 'history-entry' || screen === 'settings');
@@ -1336,75 +1356,86 @@ async function initAuth() {
 
     sb.auth.onAuthStateChange((_event, session) => {
         currentUser = session?.user || null;
-        if (screen === 'home') renderHome();
+        if (screen === 'settings') renderSettings();
+        updateHeader();
     });
 }
 
-async function signUp(email, password) {
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if (error) { alert('Ошибка регистрации: ' + error.message); return; }
-    if (data.user && !data.session) {
-        alert('Регистрация успешна! Проверьте почту для подтверждения.');
-    } else {
-        alert('Вы вошли!');
-    }
+function openAuthModal(mode) {
+    authMode = mode;
+    authTitle.textContent = mode === 'login' ? 'Вход' : 'Регистрация';
+    authSubmit.textContent = mode === 'login' ? 'Войти' : 'Зарегистрироваться';
+    authError.textContent = '';
+    authEmail.value = '';
+    authPassword.value = '';
+    authOverlay.classList.add('open');
+    setTimeout(() => authEmail.focus(), 50);
 }
 
-async function signIn(email, password) {
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) { alert('Ошибка входа: ' + error.message); return; }
+function closeAuthModal() {
+    authOverlay.classList.remove('open');
+}
+
+async function submitAuth() {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+
+    if (!email || !password) {
+        authError.textContent = 'Заполните email и пароль';
+        return;
+    }
+    if (password.length < 6) {
+        authError.textContent = 'Пароль минимум 6 символов';
+        return;
+    }
+
+    authSubmit.disabled = true;
+    authError.textContent = '';
+
+    try {
+        if (authMode === 'login') {
+            const { error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) { authError.textContent = error.message; return; }
+        } else {
+            const { data, error } = await sb.auth.signUp({ email, password });
+            if (error) { authError.textContent = error.message; return; }
+            if (data.user && !data.session) {
+                authError.textContent = 'Проверьте почту для подтверждения.';
+                return;
+            }
+        }
+        closeAuthModal();
+    } finally {
+        authSubmit.disabled = false;
+    }
 }
 
 async function signOut() {
     await sb.auth.signOut();
     currentUser = null;
-    renderHome();
+    closeAuthModal();
+    if (screen === 'settings') renderSettings();
+    updateHeader();
 }
 
-function renderAuthRow() {
-    const row = document.getElementById('rowAuth');
-    if (!row) return;
+/* Обработчики модального окна */
+loginBtn.addEventListener('click', () => openAuthModal('login'));
+signupBtn.addEventListener('click', () => openAuthModal('signup'));
+authCancel.addEventListener('click', closeAuthModal);
+authSubmit.addEventListener('click', submitAuth);
 
-    if (currentUser) {
-        row.innerHTML = `
-            <span>Аккаунт</span>
-            <span style="margin-left:auto;font-size:13px;color:#555;max-width:140px;overflow:hidden;text-overflow:ellipsis;">${currentUser.email}</span>
-            <button class="size-btn" id="logoutBtn" style="margin-left:0.5em">Выйти</button>
-        `;
-        document.getElementById('logoutBtn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            signOut();
-            renderSettings();
-        });
-    } else {
-        row.innerHTML = `
-            <span>Аккаунт</span>
-            <button class="size-btn" id="loginBtn">Войти</button>
-        `;
-        document.getElementById('loginBtn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            showAuthPrompt();
-        });
-    }
-}
-
-function showAuthPrompt() {
-    // Простой prompt вместо сложной формы
-    const choice = prompt('Выберите:\n1 — Вход\n2 — Регистрация\n\nВведите 1 или 2:');
-    if (choice === '1') {
-        const email = prompt('Email:');
-        if (!email) return;
-        const password = prompt('Пароль:');
-        if (!password) return;
-        signIn(email, password);
-    } else if (choice === '2') {
-        const email = prompt('Email:');
-        if (!email) return;
-        const password = prompt('Пароль (минимум 6 символов):');
-        if (!password) return;
-        signUp(email, password);
-    }
-}
+authOverlay.addEventListener('click', (e) => {
+    if (e.target === authOverlay) closeAuthModal();
+});
+authPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitAuth();
+});
+authEmail.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') authPassword.focus();
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && authOverlay.classList.contains('open')) closeAuthModal();
+});
 
 /* ===== Настройки ===== */
 function renderSettings() {
@@ -1414,10 +1445,6 @@ function renderSettings() {
     view.innerHTML = `
         <div class="settings-area">
             <h1 class="settings-title">Настройки</h1>
-
-            <div class="settings-row" id="rowAuth">
-                <span>Аккаунт</span>
-            </div>
 
             <div class="settings-row" id="rowLang">
                 <span>Язык</span>
@@ -1456,8 +1483,6 @@ function renderSettings() {
             </div>
         </div>
     `;
-
-    renderAuthRow();
 
     /* Язык */
     const switchLang = () => {
@@ -1543,6 +1568,50 @@ function renderSettings() {
         e.stopPropagation();
         nextTime();
     });
+
+    /* ===== Дополнительные строки (сброс + выход) ===== */
+    const settingsArea = view.querySelector('.settings-area');
+
+    /* Кнопка сброса прогресса */
+    const resetRow = document.createElement('div');
+    resetRow.className = 'settings-row';
+    resetRow.id = 'rowReset';
+    resetRow.style.cursor = 'pointer';
+    resetRow.innerHTML = `
+        <span>Сбросить прогресс</span>
+        <span style="margin-left:auto;display:inline-flex;gap:0.4em;align-items:center;">
+            <span style="font-size:13px;color:#777;font-weight:600;">${langLabel(currentLanguage)}</span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 0.5em;border-radius:4px;background:${levelColors[currentLevel] || '#e0e0e0'};color:${currentLevel === 'B1' ? '#000' : '#fff'};font-size:12px;font-weight:700;">${currentLevel}</span>
+        </span>
+    `;
+    resetRow.addEventListener('click', async () => {
+        const ok = confirm(
+            `Сбросить прогресс для ${langLabel(currentLanguage)} ${currentLevel}?\n\n` +
+            `Все выученные слова этого уровня будут забыты.\n` +
+            `История попыток сохранится.`
+        );
+        if (!ok) return;
+
+        await resetProgress();
+        await updateProgressBar();
+        alert('Прогресс сброшен.');
+        renderSettings();
+    });
+    settingsArea.appendChild(resetRow);
+
+    /* Кнопка выхода — только если авторизован */
+    if (currentUser) {
+        const logoutRow = document.createElement('div');
+        logoutRow.className = 'settings-row';
+        logoutRow.id = 'rowLogout';
+        logoutRow.style.cursor = 'pointer';
+        logoutRow.innerHTML = `
+            <span>Выйти из аккаунта</span>
+            <span style="margin-left:auto;font-size:13px;color:#777;max-width:160px;overflow:hidden;text-overflow:ellipsis;">${currentUser.email}</span>
+        `;
+        logoutRow.addEventListener('click', signOut);
+        settingsArea.appendChild(logoutRow);
+    }
 
     updateHeader();
 }
