@@ -14,7 +14,6 @@ let CHECK_COLS = 5;
 let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
 
-/* Снимки попыток — только в памяти */
 let sessionSnapshots = [];
 
 /* ===== Размер сессии ===== */
@@ -38,9 +37,7 @@ function sizeToSeconds(n) {
     return 60;
 }
 
-/* ===== Уровни =====
-   Порядок: английские A1, A2, B1, B2, C1, C2 — слева;
-   затем немецкие GE A1 — справа. */
+/* ===== Уровни ===== */
 const levels = [
     { code: 'A1',    enabled: true,  lang: 'en', label: 'A1' },
     { code: 'A2',    enabled: true,  lang: 'en', label: 'A2' },
@@ -69,18 +66,11 @@ const BANKS = {
     GE_A1: typeof WORDS_GE_A1 !== 'undefined' ? WORDS_GE_A1 : null,
 };
 
-/* Язык текущего уровня */
 function currentLang() {
     const l = levels.find(x => x.code === currentLevel);
     return l ? l.lang : 'en';
 }
 
-/* Короткое имя для иконки (без префикса GE) */
-function levelShortName(code) {
-    return code.startsWith('GE_') ? code.slice(3) : code;
-}
-
-/* Ярлык для шапки — GE_A1 → "GE1", остальные как есть */
 function levelIconLabel(code) {
     if (code.startsWith('GE_')) return 'GE' + code.slice(3);
     return code;
@@ -133,24 +123,16 @@ function shuffle(arr) {
     return a;
 }
 
-/* Нормализация:
-   - если GE-уровень: умляуты и ß разворачиваются по правилам транслитерации,
-     затем сворачиваются oe→o, ae→a, ue→u, ss→ss;
-   - убираются служебные слова der/die/das/to/the (в начале);
-   - убирается всё кроме a-z;
-   - латиница нижнего регистра. */
 function normalize(s, lang) {
     let v = (s || '');
 
     if (lang === 'ge') {
-        // умляуты → ae/oe/ue, ß → ss
         v = v
             .replace(/ä/g, 'ae').replace(/Ä/g, 'ae')
             .replace(/ö/g, 'oe').replace(/Ö/g, 'oe')
             .replace(/ü/g, 'ue').replace(/Ü/g, 'ue')
             .replace(/ß/g, 'ss');
         v = v.toLowerCase();
-        // сворачиваем обратно в чистые гласные
         v = v.replace(/ae/g, 'a')
              .replace(/oe/g, 'o')
              .replace(/ue/g, 'u');
@@ -158,7 +140,6 @@ function normalize(s, lang) {
         v = v.toLowerCase();
     }
 
-    // служебные слова
     if (lang === 'ge') {
         v = v.replace(/\b(der|die|das)\b/g, '');
     } else {
@@ -207,7 +188,6 @@ function updateCheckCols() {
 
 /* ===== Подсказка ===== */
 function hintPrefix(word) {
-    // Определяем служебный префикс: to / the / der / die / das
     const w = word || '';
     const lang = currentLang();
     if (lang === 'ge') {
@@ -395,7 +375,6 @@ function renderLevelTabs() {
 
 /* ===== Главный экран ===== */
 function renderHome() {
-    // EN столбец
     const enLevels = levels.filter(l => l.lang === 'en');
     const geLevels = levels.filter(l => l.lang === 'ge');
 
@@ -528,17 +507,13 @@ function ensureThumbVisible() {
 
 /* ===== Экран тренировки ===== */
 function renderTrain() {
-    const w = sessionWords[currentPerson];
-    const hasExample = !!(w.ex && w.ex.trim());
-
     view.innerHTML = `
         <div class="train-screen">
             <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
             <div class="train-area">
                 <div class="train-main">
-                    <div class="face-square" id="faceSquare">${w.ru}</div>
+                    <div class="face-square" id="faceSquare"></div>
                     <div class="name-plate" id="namePlate"></div>
-                    ${hasExample ? '<div class="example-plate" id="examplePlate"></div>' : ''}
                     <div class="train-controls">
                         <button class="ctrl-btn" id="btnFirst">⏮</button>
                         <button class="ctrl-btn" id="btnPrev">◀</button>
@@ -595,14 +570,12 @@ function updateTrainCard() {
     const np = document.getElementById('namePlate');
     if (!fs || !np) return;
 
-    fs.textContent = w.ru;
-    np.innerHTML = `${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span>`;
+    const hasExample = !!(w.ex && w.ex.trim());
+    fs.innerHTML = hasExample
+        ? `<span class="fs-word">${w.ru}</span><span class="fs-example">${w.ex}</span>`
+        : `<span class="fs-word">${w.ru}</span>`;
 
-    // Пример использования — только если он есть в базе
-    const ex = document.getElementById('examplePlate');
-    if (ex) {
-        ex.textContent = w.ex;
-    }
+    np.innerHTML = `${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span>`;
 
     fitFontSize(fs, 40, 14);
     fitFontSize(np, 34, 12);
@@ -997,7 +970,7 @@ function renderHistory() {
     updateHeader();
 }
 
-/* ===== Просмотр одной попытки из истории (из памяти) ===== */
+/* ===== Просмотр одной попытки из истории ===== */
 function showHistoryEntry(historyIndex) {
     const history = loadHistory(currentLevel);
     const rec = history[historyIndex];
@@ -1029,8 +1002,6 @@ function showHistoryEntry(historyIndex) {
 
     const rows = snap.items.map(it => {
         const userAns = it.userAnswer || '';
-        // В момент снимка активный был snap.level — но в evaluate мы используем currentLang().
-        // Для простоты — определяем язык по rec.level.
         const lang = snap.level.startsWith('GE_') ? 'ge' : 'en';
         const cleaned = userAns.replace(/\*/g, '');
         const u = normalize(cleaned, lang);
