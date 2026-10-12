@@ -7,16 +7,15 @@ let screen = 'home';
 let checkPhase = 'input';
 let currentPerson = 0;
 
-const TRAIN_SECONDS = 60;
-const HISTORY_MAX   = 20;
+const HISTORY_MAX = 20;
 let CHECK_COLS = 5;
 
-let timerRemaining = TRAIN_SECONDS;
+let timerRemaining = 0;
 let timerInterval  = null;
 
 let sessionSnapshots = [];
 
-/* ===== Размер сессии ===== */
+/* ===== Размер сессии (20 / 40 / 60) ===== */
 const SESSION_SIZE_KEY = 'wordlist_size';
 
 function loadSessionSize() {
@@ -31,10 +30,27 @@ function saveSessionSize(v) {
 }
 let sessionSize = loadSessionSize();
 
-function sizeToSeconds(n) {
-    if (n === 40) return 120;
-    if (n === 60) return 180;
+/* ===== Время на запоминание (60 / 120 / 180 / 0 = без ограничений) ===== */
+const SESSION_TIME_KEY = 'wordlist_time';
+
+function loadSessionTime() {
+    try {
+        const v = Number(localStorage.getItem(SESSION_TIME_KEY));
+        if (v === 60 || v === 120 || v === 180 || v === 0) return v;
+    } catch (_) {}
     return 60;
+}
+function saveSessionTime(v) {
+    try { localStorage.setItem(SESSION_TIME_KEY, String(v)); } catch (_) {}
+}
+let sessionTime = loadSessionTime();
+
+function timeLabel(sec) {
+    if (sec === 0) return '∞';
+    if (sec === 60) return '1м';
+    if (sec === 120) return '2м';
+    if (sec === 180) return '3м';
+    return sec + 'с';
 }
 
 /* ===== Уровни ===== */
@@ -283,7 +299,8 @@ function updateHeader() {
 
     trainSlot.style.display = (screen === 'train' || screen === 'check' || screen === 'results') ? 'flex' : 'none';
 
-    const showTimer = (screen === 'train');
+    // Таймер виден только на тренировке и только если время ограничено
+    const showTimer = (screen === 'train') && sessionTime > 0;
     timerWrap.style.display = showTimer ? '' : 'none';
 
     progressWrap.style.display = (screen === 'home') ? 'flex' : 'none';
@@ -309,10 +326,19 @@ function formatTime(sec) {
     const s = String(sec % 60).padStart(2, '0');
     return `${m}:${s}`;
 }
+
 function startTimer() {
     stopTimer();
-    timerRemaining = sizeToSeconds(sessionSize);
+
+    // 0 = без ограничений
+    if (sessionTime === 0) {
+        timerValue.textContent = '';
+        return;
+    }
+
+    timerRemaining = sessionTime;
     timerValue.textContent = formatTime(timerRemaining);
+
     timerInterval = setInterval(() => {
         timerRemaining--;
         if (timerRemaining <= 0) {
@@ -325,6 +351,7 @@ function startTimer() {
         timerValue.textContent = formatTime(timerRemaining);
     }, 1000);
 }
+
 function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
@@ -1089,6 +1116,11 @@ function renderSettings() {
                 <span>Слов за тренировку</span>
                 <button class="size-btn" id="sizeBtn">${sessionSize}</button>
             </div>
+
+            <div class="settings-row" id="rowTime">
+                <span>Время на запоминание</span>
+                <button class="size-btn" id="timeBtn">${timeLabel(sessionTime)}</button>
+            </div>
         </div>
     `;
 
@@ -1124,6 +1156,23 @@ function renderSettings() {
         sessionSize = (sessionSize === 20) ? 40 :
                       (sessionSize === 40) ? 60 : 20;
         saveSessionSize(sessionSize);
+        renderSettings();
+    });
+
+    document.getElementById('rowTime').addEventListener('click', (e) => {
+        if (e.target.closest('.size-btn')) return;
+        sessionTime = (sessionTime === 60)  ? 120 :
+                      (sessionTime === 120) ? 180 :
+                      (sessionTime === 180) ? 0   : 60;
+        saveSessionTime(sessionTime);
+        renderSettings();
+    });
+    document.getElementById('timeBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        sessionTime = (sessionTime === 60)  ? 120 :
+                      (sessionTime === 120) ? 180 :
+                      (sessionTime === 180) ? 0   : 60;
+        saveSessionTime(sessionTime);
         renderSettings();
     });
 
