@@ -328,115 +328,82 @@ function hintLockLength(correctAnswer) {
     return buildHintVisible(correctAnswer).length;
 }
 
-/* ===== Прогресс (Supabase + localStorage) ===== */
-function progressKey() { return 'wordlist_progress_' + storageLevelKey(); }
-
+/* ===== Прогресс (только Supabase) ===== */
 async function loadProgress() {
-    if (currentUser) {
-        const { data, error } = await sb
-            .from('progress')
-            .select('learned')
-            .eq('user_id', currentUser.id)
-            .eq('lang', currentLanguage)
-            .eq('level', currentLevel)
-            .maybeSingle();
-        if (!error && data) {
-            return { learned: Array.isArray(data.learned) ? data.learned : [] };
-        }
-        if (error) console.warn('loadProgress error:', error.message);
-        return { learned: [] };
+    if (!currentUser) return { learned: [] };
+    const { data, error } = await sb
+        .from('progress')
+        .select('learned')
+        .eq('user_id', currentUser.id)
+        .eq('lang', currentLanguage)
+        .eq('level', currentLevel)
+        .maybeSingle();
+    if (!error && data) {
+        return { learned: Array.isArray(data.learned) ? data.learned : [] };
     }
-    try {
-        const raw = localStorage.getItem(progressKey());
-        if (!raw) return { learned: [] };
-        const obj = JSON.parse(raw);
-        return { learned: Array.isArray(obj.learned) ? obj.learned : [] };
-    } catch (_) {
-        return { learned: [] };
-    }
+    if (error) console.warn('loadProgress error:', error.message);
+    return { learned: [] };
 }
 
 async function saveProgress(progress) {
-    if (currentUser) {
-        const { error } = await sb.from('progress').upsert({
-            user_id: currentUser.id,
-            lang: currentLanguage,
-            level: currentLevel,
-            learned: progress.learned,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id,lang,level' });
-        if (error) console.warn('saveProgress error:', error.message);
-    }
-    try { localStorage.setItem(progressKey(), JSON.stringify(progress)); } catch (_) {}
+    if (!currentUser) return;
+    const { error } = await sb.from('progress').upsert({
+        user_id: currentUser.id,
+        lang: currentLanguage,
+        level: currentLevel,
+        learned: progress.learned,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,lang,level' });
+    if (error) console.warn('saveProgress error:', error.message);
 }
 
 async function resetProgress() {
-    if (currentUser) {
-        const { error } = await sb.from('progress')
-            .delete()
-            .eq('user_id', currentUser.id)
-            .eq('lang', currentLanguage)
-            .eq('level', currentLevel);
-        if (error) console.warn('resetProgress error:', error.message);
-    }
-    try { localStorage.removeItem(progressKey()); } catch (_) {}
+    if (!currentUser) return;
+    const { error } = await sb.from('progress')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('lang', currentLanguage)
+        .eq('level', currentLevel);
+    if (error) console.warn('resetProgress error:', error.message);
 }
 
-/* ===== История ===== */
-function historyKey() { return 'wordlist_history_' + storageLevelKey(); }
-
+/* ===== История (только Supabase) ===== */
 async function loadHistory() {
-    if (currentUser) {
-        const { data, error } = await sb
-            .from('history')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .eq('lang', currentLanguage)
-            .eq('level', currentLevel)
-            .order('created_at', { ascending: false })
-            .limit(HISTORY_MAX);
-        if (!error && Array.isArray(data)) {
-            return data.map(r => ({
-                date: r.date,
-                correct: r.correct,
-                close: r.close,
-                wrong: r.wrong,
-                total: r.total
-            }));
-        }
-        if (error) console.warn('loadHistory error:', error.message);
-        return [];
+    if (!currentUser) return [];
+    const { data, error } = await sb
+        .from('history')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('lang', currentLanguage)
+        .eq('level', currentLevel)
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_MAX);
+    if (!error && Array.isArray(data)) {
+        return data.map(r => ({
+            date: r.date,
+            correct: r.correct,
+            close: r.close,
+            wrong: r.wrong,
+            total: r.total
+        }));
     }
-    try {
-        const raw = localStorage.getItem(historyKey());
-        if (!raw) return [];
-        const arr = JSON.parse(raw);
-        return Array.isArray(arr) ? arr : [];
-    } catch (_) {
-        return [];
-    }
+    if (error) console.warn('loadHistory error:', error.message);
+    return [];
 }
 
 async function pushHistory(entry) {
-    if (currentUser) {
-        const { error } = await sb.from('history').insert({
-            user_id: currentUser.id,
-            lang: currentLanguage,
-            level: currentLevel,
-            date: entry.date,
-            correct: entry.correct,
-            close: entry.close,
-            wrong: entry.wrong,
-            total: entry.total
-        });
-        if (error) console.warn('pushHistory error:', error.message);
-    }
-    try {
-        const raw = localStorage.getItem(historyKey());
-        const list = raw ? JSON.parse(raw) : [];
-        list.unshift(entry);
-        localStorage.setItem(historyKey(), JSON.stringify(list.slice(0, HISTORY_MAX)));
-    } catch (_) {}
+    if (!currentUser) return;
+    const { error } = await sb.from('history').insert({
+        user_id: currentUser.id,
+        lang: currentLanguage,
+        level: currentLevel,
+        date: entry.date,
+        correct: entry.correct,
+        close: entry.close,
+        wrong: entry.wrong,
+        total: entry.total
+    });
+    if (error) console.warn('pushHistory error:', error.message);
 }
 
 /* ===== Шапка ===== */
@@ -444,7 +411,6 @@ function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history' || screen === 'history-entry');
     settingsBtn.classList.toggle('active', screen === 'settings');
 
-    // Кнопки в шапке: авторизован → «Результаты», нет → «Войти» + «Регистрация»
     if (currentUser) {
         historyBtn.style.display = '';
         loginBtn.style.display = 'none';
@@ -528,10 +494,8 @@ async function updateProgressBar() {
     progressFill.style.width = pct + '%';
     progressCount.textContent = `${learned} / ${total}`;
 
-    // Язык — отдельная плашка
     if (homeLangBadge) homeLangBadge.textContent = langShort(currentLanguage);
 
-    // Уровень — своя цветная плашка
     const color = levelColors[currentLevel] || '#e0e0e0';
     homeLevelIcon.textContent = currentLevel;
     homeLevelIcon.dataset.level = currentLevel;
@@ -1079,6 +1043,57 @@ function handleCheckKey(e) {
     focusCurrentInput(true);
 }
 
+/* ===== Клавиши в режиме «По одной» ===== */
+function handleCheckOneKey(e) {
+    if (screen !== 'check') return;
+    if (checkMode !== 'one') return;
+    if (checkPhase !== 'input') return;
+
+    const tag = (e.target && e.target.tagName) || '';
+    const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable));
+
+    // Enter в поле ввода — к следующей карточке / к результатам
+    if (inInput && e.key === 'Enter') {
+        e.preventDefault();
+        saveOneInput();
+        if (currentPerson < sessionWords.length - 1) {
+            currentPerson++;
+            renderCheckOne();
+            updateHeader();
+        } else {
+            checkPhase = 'result';
+            renderCheckOne();
+            updateHeader();
+        }
+        return;
+    }
+
+    // Стрелки вне поля ввода
+    if (inInput) return;
+
+    if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        saveOneInput();
+        if (currentPerson < sessionWords.length - 1) {
+            currentPerson++;
+            renderCheckOne();
+            updateHeader();
+        } else {
+            checkPhase = 'result';
+            renderCheckOne();
+            updateHeader();
+        }
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        saveOneInput();
+        if (currentPerson > 0) {
+            currentPerson--;
+            renderCheckOne();
+            updateHeader();
+        }
+    }
+}
+
 function focusCurrentInput(scrollIfNeeded) {
     if (checkMode === 'one') {
         const inp = document.getElementById('oneInput');
@@ -1259,8 +1274,8 @@ async function renderHistory() {
 }
 
 /* ===== Просмотр одной попытки из истории ===== */
-function showHistoryEntry(historyIndex) {
-    const history = loadHistory();
+async function showHistoryEntry(historyIndex) {
+    const history = await loadHistory();
     const rec = history[historyIndex];
     if (!rec) { renderHistory(); return; }
 
@@ -1736,6 +1751,7 @@ finishBtn.addEventListener('click', async () => {
 
 /* ===== Глобальные клавиши ===== */
 document.addEventListener('keydown', handleTrainKeys);
+document.addEventListener('keydown', handleCheckOneKey);
 
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', async () => {
