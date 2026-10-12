@@ -66,7 +66,7 @@ function loadCheckMode() {
         const v = localStorage.getItem(CHECK_MODE_KEY);
         if (v === 'all' || v === 'one') return v;
     } catch (_) {}
-    return 'all';
+    return 'one';
 }
 function saveCheckMode(v) {
     try { localStorage.setItem(CHECK_MODE_KEY, v); } catch (_) {}
@@ -188,10 +188,23 @@ const authPassword = document.getElementById('authPassword');
 const authError    = document.getElementById('authError');
 const authSubmit   = document.getElementById('authSubmit');
 const authCancel   = document.getElementById('authCancel');
+const authForgot   = document.getElementById('authForgot');
 
-/* ===== Настройки подсказок ===== */
+/* ===== Модальное окно сброса пароля ===== */
+const resetOverlay     = document.getElementById('resetOverlay');
+const resetEmail       = document.getElementById('resetEmail');
+const resetNewPassword = document.getElementById('resetNewPassword');
+const resetError       = document.getElementById('resetError');
+const resetSubmit      = document.getElementById('resetSubmit');
+const resetCancel      = document.getElementById('resetCancel');
+const resetHint        = document.getElementById('resetHint');
+
+let resetMode = 'send'; // 'send' | 'update'
+
+/* ===== Настройки подсказок и озвучки ===== */
 const HINTS_KEY  = 'wordlist_hints';
 const LENGTH_KEY = 'wordlist_length';
+const VOICE_KEY  = 'wordlist_voice';
 
 function loadBool(key, def) {
     try {
@@ -208,6 +221,8 @@ function loadHints()  { return loadBool(HINTS_KEY, false); }
 function saveHints(v) { saveBool(HINTS_KEY, v); }
 function loadLength() { return loadBool(LENGTH_KEY, false); }
 function saveLength(v){ saveBool(LENGTH_KEY, v); }
+function loadVoice()  { return loadBool(VOICE_KEY, true); }  // по умолчанию включено
+function saveVoice(v) { saveBool(VOICE_KEY, v); }
 
 /* ===== Утилиты ===== */
 function shuffle(arr) {
@@ -326,6 +341,29 @@ function buildHintMask(correctAnswer) {
 
 function hintLockLength(correctAnswer) {
     return buildHintVisible(correctAnswer).length;
+}
+
+/* ===== Озвучка (Speech Synthesis) ===== */
+const voiceLangMap = { en: 'en-US', de: 'de-DE', tr: 'tr-TR' };
+
+function speakWord(text) {
+    if (!loadVoice()) return;
+    if (!text || !('speechSynthesis' in window)) return;
+
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = voiceLangMap[currentLanguage] || 'en-US';
+    u.rate = 0.9;
+    u.pitch = 1;
+
+    const voices = window.speechSynthesis.getVoices();
+    const match = voices.find(v =>
+        v.lang && v.lang.toLowerCase().startsWith(u.lang.toLowerCase().slice(0, 2))
+    );
+    if (match) u.voice = match;
+
+    try { window.speechSynthesis.speak(u); } catch (_) {}
 }
 
 /* ===== Прогресс (только Supabase) ===== */
@@ -729,6 +767,9 @@ function updateTrainCard() {
 
     updateThumbsActive();
     ensureThumbVisible();
+
+    // Озвучить слово на изучаемом языке
+    speakWord(w.en);
 }
 
 /* ===== Навигация клавишами на тренировке ===== */
@@ -1370,8 +1411,23 @@ async function initAuth() {
     const { data: { session } } = await sb.auth.getSession();
     currentUser = session?.user || null;
 
-    sb.auth.onAuthStateChange((_event, session) => {
+    sb.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user || null;
+
+        // Переход по ссылке восстановления пароля
+        if (event === 'PASSWORD_RECOVERY') {
+            resetMode = 'update';
+            resetEmail.value = session?.user?.email || '';
+            resetEmail.disabled = true;
+            resetNewPassword.value = '';
+            resetNewPassword.style.display = '';
+            resetError.textContent = '';
+            resetHint.textContent = 'Задайте новый пароль для аккаунта.';
+            resetSubmit.textContent = 'Сохранить пароль';
+            resetOverlay.classList.add('open');
+            setTimeout(() => resetNewPassword.focus(), 50);
+        }
+
         if (screen === 'settings') renderSettings();
         updateHeader();
     });
@@ -1427,6 +1483,9 @@ async function submitAuth() {
 }
 
 async function signOut() {
+    const ok = confirm('Выйти из аккаунта?');
+    if (!ok) return;
+
     await sb.auth.signOut();
     currentUser = null;
     closeAuthModal();
@@ -1434,11 +1493,66 @@ async function signOut() {
     updateHeader();
 }
 
-/* Обработчики модального окна */
+/* ===== Восстановление пароля ===== */
+function openResetModal() {
+    resetMode = 'send';
+    resetEmail.value = '';
+    resetEmail.disabled = false;
+    resetNewPassword.value = '';
+    resetNewPassword.style.display = 'none';
+    resetError.textContent = '';
+    resetHint.textContent = 'Мы отправим ссылку на вашу почту. Перейдите по ней — и задайте новый пароль.';
+    resetSubmit.textContent = 'Отправить ссылку';
+    resetOverlay.classList.add('open');
+    setTimeout(() => resetEmail.focus(), 50);
+}
+
+function closeResetModal() {
+    resetOverlay.classList.remove('open');
+}
+
+async function submitReset() {
+    resetError.textContent = '';
+
+    if (resetMode === 'send') {
+        const email = resetEmail.value.trim();
+        if (!email) { resetError.textContent = 'Введите email'; return; }
+
+        resetSubmit.disabled = true;
+        try {
+            const { error } = await sb.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + window.location.pathname
+            });
+            if (error) { resetError.textContent = error.message; return; }
+            resetHint.textContent = 'Ссылка отправлена. Проверьте почту.';
+            resetEmail.disabled = true;
+        } finally {
+            resetSubmit.disabled = false;
+        }
+    } else {
+        const pwd = resetNewPassword.value;
+        if (!pwd || pwd.length < 6) {
+            resetError.textContent = 'Пароль минимум 6 символов';
+            return;
+        }
+        resetSubmit.disabled = true;
+        try {
+            const { error } = await sb.auth.updateUser({ password: pwd });
+            if (error) { resetError.textContent = error.message; return; }
+            closeResetModal();
+            alert('Пароль обновлён.');
+        } finally {
+            resetSubmit.disabled = false;
+        }
+    }
+}
+
+/* Обработчики модальных окон */
 loginBtn.addEventListener('click', () => openAuthModal('login'));
 signupBtn.addEventListener('click', () => openAuthModal('signup'));
 authCancel.addEventListener('click', closeAuthModal);
 authSubmit.addEventListener('click', submitAuth);
+authForgot.addEventListener('click', openResetModal);
 
 authOverlay.addEventListener('click', (e) => {
     if (e.target === authOverlay) closeAuthModal();
@@ -1449,14 +1563,31 @@ authPassword.addEventListener('keydown', (e) => {
 authEmail.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') authPassword.focus();
 });
+
+resetCancel.addEventListener('click', closeResetModal);
+resetSubmit.addEventListener('click', submitReset);
+resetOverlay.addEventListener('click', (e) => {
+    if (e.target === resetOverlay) closeResetModal();
+});
+resetEmail.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && resetMode === 'send') submitReset();
+});
+resetNewPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && resetMode === 'update') submitReset();
+});
+
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && authOverlay.classList.contains('open')) closeAuthModal();
+    if (e.key === 'Escape') {
+        if (authOverlay.classList.contains('open')) closeAuthModal();
+        if (resetOverlay.classList.contains('open')) closeResetModal();
+    }
 });
 
 /* ===== Настройки ===== */
 function renderSettings() {
     const hintsOn  = loadHints();
     const lengthOn = loadLength();
+    const voiceOn  = loadVoice();
 
     view.innerHTML = `
         <div class="settings-area">
@@ -1486,6 +1617,14 @@ function renderSettings() {
                     <span class="switch-slider"></span>
                 </label>
                 <span>Показывать длину слова</span>
+            </div>
+
+            <div class="settings-row" id="rowVoice">
+                <label class="switch">
+                    <input type="checkbox" id="voiceToggle" ${voiceOn ? 'checked' : ''}>
+                    <span class="switch-slider"></span>
+                </label>
+                <span>Озвучивать слова</span>
             </div>
 
             <div class="settings-row" id="rowSize">
@@ -1550,6 +1689,17 @@ function renderSettings() {
     });
     document.getElementById('lengthToggle').addEventListener('change', (e) => {
         saveLength(e.target.checked);
+    });
+
+    /* Озвучка */
+    document.getElementById('rowVoice').addEventListener('click', (e) => {
+        if (e.target.closest('.switch')) return;
+        const input = document.getElementById('voiceToggle');
+        input.checked = !input.checked;
+        saveVoice(input.checked);
+    });
+    document.getElementById('voiceToggle').addEventListener('change', (e) => {
+        saveVoice(e.target.checked);
     });
 
     /* Размер */
@@ -1758,4 +1908,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
     await initAuth();
     renderHome();
+
+    // Прогрев голосов для озвучки
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+    }
 });
