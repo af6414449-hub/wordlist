@@ -199,7 +199,7 @@ const resetSubmit      = document.getElementById('resetSubmit');
 const resetCancel      = document.getElementById('resetCancel');
 const resetHint        = document.getElementById('resetHint');
 
-let resetMode = 'send'; // 'send' | 'update'
+let resetMode = 'send';
 
 /* ===== Настройки подсказок и озвучки ===== */
 const HINTS_KEY  = 'wordlist_hints';
@@ -221,7 +221,7 @@ function loadHints()  { return loadBool(HINTS_KEY, false); }
 function saveHints(v) { saveBool(HINTS_KEY, v); }
 function loadLength() { return loadBool(LENGTH_KEY, false); }
 function saveLength(v){ saveBool(LENGTH_KEY, v); }
-function loadVoice()  { return loadBool(VOICE_KEY, true); }  // по умолчанию включено
+function loadVoice()  { return loadBool(VOICE_KEY, true); }
 function saveVoice(v) { saveBool(VOICE_KEY, v); }
 
 /* ===== Утилиты ===== */
@@ -364,73 +364,6 @@ function speakWord(text) {
     if (match) u.voice = match;
 
     try { window.speechSynthesis.speak(u); } catch (_) {}
-}
-
-/* ===== Свайпы для карточек ===== */
-function setupSwipeOn(element, onLeft, onRight) {
-    if (!element) return;
-
-    let startX = 0, startY = 0, startTime = 0;
-    let tracking = false;
-    let lockedAxis = null;
-
-    const THRESHOLD = 60;
-    const MAX_TIME  = 600;
-    const AXIS_LOCK = 10;
-
-    element.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
-        const tag = (e.target && e.target.tagName) || '';
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
-            tracking = false;
-            return;
-        }
-        tracking = true;
-        lockedAxis = null;
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        startTime = Date.now();
-    }, { passive: true });
-
-    element.addEventListener('touchmove', (e) => {
-        if (!tracking) return;
-        if (e.touches.length !== 1) return;
-
-        const dx = e.touches[0].clientX - startX;
-        const dy = e.touches[0].clientY - startY;
-
-        if (lockedAxis === null) {
-            if (Math.abs(dx) > AXIS_LOCK || Math.abs(dy) > AXIS_LOCK) {
-                lockedAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-            }
-        }
-
-        if (lockedAxis === 'x') {
-            if (e.cancelable) e.preventDefault();
-        }
-    }, { passive: false });
-
-    element.addEventListener('touchend', (e) => {
-        if (!tracking) return;
-        tracking = false;
-
-        if (lockedAxis !== 'x') return;
-
-        const dt = Date.now() - startTime;
-        if (dt > MAX_TIME) return;
-
-        const t = e.changedTouches && e.changedTouches[0];
-        if (!t) return;
-
-        const dx = t.clientX - startX;
-        const dy = t.clientY - startY;
-
-        if (Math.abs(dx) < THRESHOLD) return;
-        if (Math.abs(dy) > Math.abs(dx)) return;
-
-        if (dx < 0) onLeft && onLeft();
-        else        onRight && onRight();
-    }, { passive: true });
 }
 
 /* ===== Прогресс (только Supabase) ===== */
@@ -801,32 +734,19 @@ function renderTrain() {
         updateTrainCard();
     });
 
-    // Клик по квадрату — повторная озвучка
+    // Клик по квадрату значения — повторная озвучка
     const faceSquare = document.getElementById('faceSquare');
     faceSquare.addEventListener('click', () => {
         const w = sessionWords[currentPerson];
         speakWord(w.en);
     });
 
-    // Свайпы по train-area
-    const trainArea = document.querySelector('.train-area');
-    setupSwipeOn(
-        trainArea,
-        () => {
-            if (currentPerson < sessionWords.length - 1) {
-                currentPerson++;
-                updateTrainCard();
-            } else {
-                goToCheck();
-            }
-        },
-        () => {
-            if (currentPerson > 0) {
-                currentPerson--;
-                updateTrainCard();
-            }
-        }
-    );
+    // Клик по плашке слова — повторная озвучка
+    const namePlate = document.getElementById('namePlate');
+    namePlate.addEventListener('click', () => {
+        const w = sessionWords[currentPerson];
+        speakWord(w.en);
+    });
 
     updateTrainCard();
     updateHeader();
@@ -852,7 +772,6 @@ function updateTrainCard() {
     updateThumbsActive();
     ensureThumbVisible();
 
-    // Озвучить слово на изучаемом языке
     speakWord(w.en);
 }
 
@@ -1050,7 +969,7 @@ function renderCheckOne() {
         try { inp.focus({ preventScroll: true }); } catch (_) {}
     }
 
-    // Клик по квадрату — повторная озвучка
+    // Клик по квадрату значения — повторная озвучка
     const fs = document.getElementById('faceSquare');
     if (fs) {
         fs.addEventListener('click', () => {
@@ -1058,32 +977,6 @@ function renderCheckOne() {
             speakWord(w.en);
         });
     }
-
-    // Свайпы по train-area
-    const trainArea = document.querySelector('.train-area');
-    setupSwipeOn(
-        trainArea,
-        () => {
-            saveOneInput();
-            if (currentPerson < sessionWords.length - 1) {
-                currentPerson++;
-                renderCheckOne();
-                updateHeader();
-            } else {
-                checkPhase = 'result';
-                renderCheckOne();
-                updateHeader();
-            }
-        },
-        () => {
-            saveOneInput();
-            if (currentPerson > 0) {
-                currentPerson--;
-                renderCheckOne();
-                updateHeader();
-            }
-        }
-    );
 
     ensureThumbVisible();
 }
@@ -1755,7 +1648,6 @@ function renderSettings() {
         </div>
     `;
 
-    /* Язык */
     const switchLang = () => {
         currentLanguage = nextLang(currentLanguage);
         saveLang(currentLanguage);
@@ -1770,7 +1662,6 @@ function renderSettings() {
         switchLang();
     });
 
-    /* Режим проверки */
     const switchCheckMode = () => {
         checkMode = (checkMode === 'all') ? 'one' : 'all';
         saveCheckMode(checkMode);
@@ -1785,7 +1676,6 @@ function renderSettings() {
         switchCheckMode();
     });
 
-    /* Первая буква */
     document.getElementById('rowHints').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('hintsToggle');
@@ -1796,7 +1686,6 @@ function renderSettings() {
         saveHints(e.target.checked);
     });
 
-    /* Длина слова */
     document.getElementById('rowLength').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('lengthToggle');
@@ -1807,7 +1696,6 @@ function renderSettings() {
         saveLength(e.target.checked);
     });
 
-    /* Озвучка */
     document.getElementById('rowVoice').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('voiceToggle');
@@ -1818,7 +1706,6 @@ function renderSettings() {
         saveVoice(e.target.checked);
     });
 
-    /* Размер */
     const nextSize = () => {
         sessionSize = (sessionSize === 20) ? 40 :
                       (sessionSize === 40) ? 60 : 20;
@@ -1834,7 +1721,6 @@ function renderSettings() {
         nextSize();
     });
 
-    /* Время */
     const nextTime = () => {
         sessionTime = (sessionTime === 60)  ? 120 :
                       (sessionTime === 120) ? 180 :
@@ -1851,10 +1737,8 @@ function renderSettings() {
         nextTime();
     });
 
-    /* ===== Дополнительные строки (сброс + выход) ===== */
     const settingsArea = view.querySelector('.settings-area');
 
-    /* Кнопка сброса прогресса */
     const resetRow = document.createElement('div');
     resetRow.className = 'settings-row';
     resetRow.id = 'rowReset';
@@ -1881,7 +1765,6 @@ function renderSettings() {
     });
     settingsArea.appendChild(resetRow);
 
-    /* Кнопка выхода — только если авторизован */
     if (currentUser) {
         const logoutRow = document.createElement('div');
         logoutRow.className = 'settings-row';
@@ -2019,13 +1902,29 @@ finishBtn.addEventListener('click', async () => {
 document.addEventListener('keydown', handleTrainKeys);
 document.addEventListener('keydown', handleCheckOneKey);
 
+/* ===== Мобильная клавиатура: поднять контент ===== */
+(function setupVisualViewport() {
+    if (!window.visualViewport) return;
+
+    const root = document.documentElement;
+
+    const update = () => {
+        const vv = window.visualViewport;
+        const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        root.style.setProperty('--keyboard-offset', hidden + 'px');
+    };
+
+    window.visualViewport.addEventListener('resize', update);
+    window.visualViewport.addEventListener('scroll', update);
+    update();
+})();
+
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
     await initAuth();
     renderHome();
 
-    // Прогрев голосов для озвучки
     if ('speechSynthesis' in window) {
         window.speechSynthesis.getVoices();
         window.speechSynthesis.onvoiceschanged = () => {
