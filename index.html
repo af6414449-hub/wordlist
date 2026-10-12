@@ -49,7 +49,6 @@
             display: flex; flex-direction: column;
         }
 
-        /* ===== Шапка ===== */
         .topbar {
             min-height: 48px; flex: 0 0 auto;
             background: #1b1c1d; color: rgba(255,255,255,0.9);
@@ -280,7 +279,6 @@
             .timer b { font-size: 11px; min-width: 2em; }
         }
 
-        /* ===== Контент ===== */
         .wrapper {
             flex: 1 1 auto; padding: 1em 1em 1em 2em;
             display: flex; flex-direction: column; min-height: 0;
@@ -298,7 +296,6 @@
             max-width: 960px;
             flex-wrap: wrap;
         }
-
         .levels-column {
             display: flex;
             flex-direction: column;
@@ -306,7 +303,6 @@
             flex: 0 0 auto;
             width: 200px;
         }
-
         .levels-column-title {
             color: #4a4a4a;
             font-size: 13px;
@@ -315,7 +311,6 @@
             text-align: center;
             padding: 0 0 0.25em;
         }
-
         .level-btn {
             width: 100%;
             height: 48px;
@@ -334,10 +329,8 @@
         }
         .level-btn:hover { background: #d5d5d5; }
         .level-btn:active { transform: scale(0.98); }
-
         .level-btn.active { color: #fff; }
         .level-btn.active[data-level="B1"] { color: #000; }
-
         .level-btn.disabled {
             background: #ededed;
             color: #bdbdbd;
@@ -371,37 +364,24 @@
         }
         .start-btn:hover { background: #5a5a5a; }
         .start-btn:active { transform: scale(0.99); }
-
-        .start-btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .start-btn.disabled { opacity: 0.5; cursor: not-allowed; }
         .start-btn.disabled:hover { background: #4a4a4a; }
 
         @media (max-width: 900px) {
-            .home-layout {
-                margin-left: 1em;
-                margin-right: 1em;
-                gap: 1em;
-            }
+            .home-layout { margin-left: 1em; margin-right: 1em; gap: 1em; }
             .levels-column { width: 150px; }
             .level-btn { height: 40px; font-size: 17px; }
             .start-btn { font-size: 34px; min-width: 160px; }
         }
-
         @media (max-width: 640px) {
-            .home-layout {
-                margin-left: 0.5em;
-                margin-right: 0.5em;
-                gap: 0.6em;
-            }
+            .home-layout { margin-left: 0.5em; margin-right: 0.5em; gap: 0.6em; }
             .levels-column { width: 110px; gap: 0.3em; }
             .levels-column-title { font-size: 11px; }
             .level-btn { height: 34px; font-size: 14px; }
             .start-btn { font-size: 22px; min-width: 100px; }
         }
 
-        /* ===== Экран настроек ===== */
+        /* ===== Настройки ===== */
         .settings-area {
             flex: 1 1 auto; min-height: 0;
             padding: 1.25em;
@@ -429,10 +409,7 @@
             cursor: pointer;
             user-select: none;
         }
-        .settings-row + .settings-row {
-            margin-top: 0.75em;
-        }
-
+        .settings-row + .settings-row { margin-top: 0.75em; }
         .switch {
             position: relative;
             display: inline-block;
@@ -441,11 +418,7 @@
             flex: 0 0 auto;
             pointer-events: none;
         }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
+        .switch input { opacity: 0; width: 0; height: 0; }
         .switch-slider {
             position: absolute;
             cursor: pointer;
@@ -463,12 +436,8 @@
             border-radius: 50%;
             transition: transform 0.2s;
         }
-        .switch input:checked + .switch-slider {
-            background-color: #2ecc71;
-        }
-        .switch input:checked + .switch-slider:before {
-            transform: translateX(22px);
-        }
+        .switch input:checked + .switch-slider { background-color: #2ecc71; }
+        .switch input:checked + .switch-slider:before { transform: translateX(22px); }
 
         .size-btn {
             margin-left: auto;
@@ -488,7 +457,7 @@
         .size-btn:hover { background: #3498db; }
         .size-btn:active { transform: scale(0.97); }
 
-        /* ===== Экран тренировки ===== */
+        /* ===== Тренировка ===== */
         .train-screen {
             display: flex; flex-direction: column; gap: 0.5em;
             flex: 1 1 auto; min-height: 0;
@@ -519,7 +488,6 @@
             max-width: 64px; overflow: hidden; text-overflow: ellipsis;
             white-space: nowrap;
         }
-
         .train-area {
             flex: 1 1 auto; min-height: 0;
             display: flex; align-items: center; justify-content: center;
@@ -531,7 +499,6 @@
             justify-content: center; gap: 0.6em; min-height: 0;
         }
 
-        /* Квадрат: перевод + пример внутри */
         .face-square {
             width: min(38vh, 320px);
             aspect-ratio: 1 / 0.85;
@@ -556,12 +523,10 @@
             hyphens: auto;
             cursor: pointer;
         }
-
         .face-square .fs-word {
             font-size: 1em;
             font-weight: 500;
         }
-
         .face-square .fs-example {
             font-size: 0.5em;
             font-weight: 400;
@@ -580,7 +545,6 @@
             text-overflow: clip;
             line-height: 1.1;
         }
-
         .train-controls { display: flex; gap: 0.5em; }
         .ctrl-btn {
             width: 56px; height: 44px; border: none; border-radius: 4px;
@@ -592,7 +556,7 @@
         .ctrl-btn:hover { background: #2679b6; }
         .ctrl-btn:active { transform: scale(0.95); }
 
-        /* ===== Экран проверки ===== */
+        /* ===== Проверка ===== */
         .check-area {
             flex: 1 1 auto; min-height: 0;
             padding: 1.5em;
@@ -604,10 +568,7 @@
             grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 0.75em; align-content: start;
         }
-        .check-cell {
-            display: flex; flex-direction: column; gap: 0.25em; min-width: 0;
-        }
-
+        .check-cell { display: flex; flex-direction: column; gap: 0.25em; min-width: 0; }
         .check-img {
             width: 100%; aspect-ratio: 1 / 0.75;
             background: #ffffff; border: 1px solid #fff;
@@ -615,12 +576,9 @@
             text-align: center; padding: 0.4em;
             font-size: 13px; color: #212121; font-weight: 500;
             overflow: hidden; line-height: 1.15;
-            white-space: normal;
-            word-break: normal;
-            overflow-wrap: break-word;
-            hyphens: auto;
+            white-space: normal; word-break: normal;
+            overflow-wrap: break-word; hyphens: auto;
         }
-
         .check-input {
             width: 100%; height: 32px;
             border: 1px solid #fff; border-radius: 3px;
@@ -629,13 +587,9 @@
             text-align: center; color: #212121; outline: none;
         }
         .check-input:focus { border-color: #2f8fd6; }
-
         .check-cell.current .check-input {
-            background: #ffe600;
-            color: #000;
-            font-weight: 600;
+            background: #ffe600; color: #000; font-weight: 600;
         }
-
         .check-input.correct { background: #2ecc71; color: #fff; font-weight: 600; border-color: #27ae60; }
         .check-input.close   { background: #f39c12; color: #fff; font-weight: 600; border-color: #d68910; }
         .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 600; border-color: #c0392b; }
@@ -643,10 +597,7 @@
 
         @media (max-width: 560px) {
             .check-area { padding: 0.75em; }
-            .check-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 0.5em;
-            }
+            .check-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
             .check-img { font-size: 11px; padding: 0.3em; }
             .check-input { height: 30px; font-size: 15px; }
         }
@@ -703,7 +654,6 @@
         }
         .results-table th { background: #f5f5f5; font-weight: 600; color: #555; }
         .results-table tr:last-child td { border-bottom: none; }
-
         .results-table td.correct { background: #d5f5e3; color: #1e8449; font-weight: 600; }
         .results-table td.close   { background: #fdebd0; color: #b9770e; font-weight: 600; }
         .results-table td.wrong   { background: #fadbd8; color: #a93226; font-weight: 600; }
