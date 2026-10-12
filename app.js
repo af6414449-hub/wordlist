@@ -1,5 +1,6 @@
 /* Wordlist — логика приложения.
-   Зависит от a1.js, a2.js, b1.js, b2.js (англ.) и ge_a1.js (нем.). */
+   Зависит от a1.js, a2.js, b1.js, b2.js (англ.),
+   ge_a1.js (нем.), tr_b2.js (тур.). */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -15,9 +16,41 @@ let timerInterval  = null;
 
 let sessionSnapshots = [];
 
+/* ===== Язык ===== */
+const LANG_KEY = 'wordlist_lang';
+
+function loadLang() {
+    try {
+        const v = localStorage.getItem(LANG_KEY);
+        if (v === 'en' || v === 'tr' || v === 'de') return v;
+    } catch (_) {}
+    return 'en';
+}
+function saveLang(v) {
+    try { localStorage.setItem(LANG_KEY, v); } catch (_) {}
+}
+let currentLanguage = loadLang();
+
+function langLabel(code) {
+    if (code === 'en') return 'English';
+    if (code === 'tr') return 'Türkçe';
+    if (code === 'de') return 'Deutsch';
+    return code;
+}
+function nextLang(code) {
+    if (code === 'en') return 'tr';
+    if (code === 'tr') return 'de';
+    return 'en';
+}
+function langShort(code) {
+    if (code === 'en') return 'EN';
+    if (code === 'tr') return 'TR';
+    if (code === 'de') return 'DE';
+    return code.toUpperCase();
+}
+
 /* ===== Размер сессии (20 / 40 / 60) ===== */
 const SESSION_SIZE_KEY = 'wordlist_size';
-
 function loadSessionSize() {
     try {
         const v = Number(localStorage.getItem(SESSION_SIZE_KEY));
@@ -32,7 +65,6 @@ let sessionSize = loadSessionSize();
 
 /* ===== Время на запоминание (60 / 120 / 180 / 0 = без ограничений) ===== */
 const SESSION_TIME_KEY = 'wordlist_time';
-
 function loadSessionTime() {
     try {
         const v = Number(localStorage.getItem(SESSION_TIME_KEY));
@@ -46,22 +78,21 @@ function saveSessionTime(v) {
 let sessionTime = loadSessionTime();
 
 function timeLabel(sec) {
-    if (sec === 0) return '∞';
-    if (sec === 60) return '1м';
+    if (sec === 0)   return '∞';
+    if (sec === 60)  return '1м';
     if (sec === 120) return '2м';
     if (sec === 180) return '3м';
     return sec + 'с';
 }
 
-/* ===== Уровни ===== */
+/* ===== Уровни (без языкового префикса) ===== */
 const levels = [
-    { code: 'A1',    enabled: true,  lang: 'en', label: 'A1' },
-    { code: 'A2',    enabled: true,  lang: 'en', label: 'A2' },
-    { code: 'B1',    enabled: true,  lang: 'en', label: 'B1' },
-    { code: 'B2',    enabled: true,  lang: 'en', label: 'B2' },
-    { code: 'C1',    enabled: false, lang: 'en', label: 'C1' },
-    { code: 'C2',    enabled: false, lang: 'en', label: 'C2' },
-    { code: 'GE_A1', enabled: true,  lang: 'ge', label: 'A1' },
+    { code: 'A1', enabled: true  },
+    { code: 'A2', enabled: true  },
+    { code: 'B1', enabled: true  },
+    { code: 'B2', enabled: true  },
+    { code: 'C1', enabled: false },
+    { code: 'C2', enabled: false },
 ];
 
 const levelColors = {
@@ -71,25 +102,40 @@ const levelColors = {
     B2: '#2ecc71',
     C1: '#e0e0e0',
     C2: '#e0e0e0',
-    GE_A1: '#e57373',
 };
 
+/* Банки по языкам: BANKS[lang][level] */
 const BANKS = {
-    A1:    typeof WORDS_A1    !== 'undefined' ? WORDS_A1    : null,
-    A2:    typeof WORDS_A2    !== 'undefined' ? WORDS_A2    : null,
-    B1:    typeof WORDS_B1    !== 'undefined' ? WORDS_B1    : null,
-    B2:    typeof WORDS_B2    !== 'undefined' ? WORDS_B2    : null,
-    GE_A1: typeof WORDS_GE_A1 !== 'undefined' ? WORDS_GE_A1 : null,
+    en: {
+        A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
+        A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
+        B1: typeof WORDS_B1 !== 'undefined' ? WORDS_B1 : null,
+        B2: typeof WORDS_B2 !== 'undefined' ? WORDS_B2 : null,
+    },
+    de: {
+        A1: typeof WORDS_GE_A1 !== 'undefined' ? WORDS_GE_A1 : null,
+    },
+    tr: {
+        B2: typeof WORDS_TR_B2 !== 'undefined' ? WORDS_TR_B2 : null,
+    },
 };
 
-function currentLang() {
-    const l = levels.find(x => x.code === currentLevel);
-    return l ? l.lang : 'en';
+function hasBank(level) {
+    const l = BANKS[currentLanguage];
+    return !!(l && l[level] && l[level].length);
+}
+function getBank(level) {
+    const l = BANKS[currentLanguage];
+    return (l && l[level]) ? l[level] : null;
 }
 
-function levelIconLabel(code) {
-    if (code.startsWith('GE_')) return 'GE' + code.slice(3);
-    return code;
+/* Ключ уровня для localStorage: "EN_A1", "DE_A1", "TR_B2" */
+function storageLevelKey() {
+    return currentLanguage.toUpperCase() + '_' + currentLevel;
+}
+
+function levelIconLabel() {
+    return langShort(currentLanguage) + ' ' + currentLevel;
 }
 
 let sessionWords = [];
@@ -109,7 +155,7 @@ const progressCount = document.getElementById('progressCount');
 const homeLevelIcon = document.getElementById('homeLevelIcon');
 const levelsTabs    = document.getElementById('levelsTabs');
 
-/* ===== Настройки ===== */
+/* ===== Настройки подсказок ===== */
 const HINTS_KEY  = 'wordlist_hints';
 const LENGTH_KEY = 'wordlist_length';
 
@@ -139,10 +185,11 @@ function shuffle(arr) {
     return a;
 }
 
+/* Нормализация с учётом языка */
 function normalize(s, lang) {
     let v = (s || '');
 
-    if (lang === 'ge') {
+    if (lang === 'de') {
         v = v
             .replace(/ä/g, 'ae').replace(/Ä/g, 'ae')
             .replace(/ö/g, 'oe').replace(/Ö/g, 'oe')
@@ -152,13 +199,19 @@ function normalize(s, lang) {
         v = v.replace(/ae/g, 'a')
              .replace(/oe/g, 'o')
              .replace(/ue/g, 'u');
+        v = v.replace(/\b(der|die|das)\b/g, '');
+    } else if (lang === 'tr') {
+        // Турецкие буквы → латиница
+        v = v
+            .replace(/ç/g, 'c').replace(/Ç/g, 'c')
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
+            .replace(/ı/g, 'i').replace(/İ/g, 'i')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'o')
+            .replace(/ş/g, 's').replace(/Ş/g, 's')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'u');
+        v = v.toLowerCase();
     } else {
         v = v.toLowerCase();
-    }
-
-    if (lang === 'ge') {
-        v = v.replace(/\b(der|die|das)\b/g, '');
-    } else {
         v = v.replace(/\b(to|the)\b/g, '');
     }
 
@@ -187,10 +240,9 @@ function levenshtein(a, b) {
 }
 
 function evaluate(userAnswer, correctAnswer) {
-    const lang = currentLang();
     const cleaned = (userAnswer || '').replace(/\*/g, '');
-    const u = normalize(cleaned, lang);
-    const c = normalize(correctAnswer, lang);
+    const u = normalize(cleaned, currentLanguage);
+    const c = normalize(correctAnswer, currentLanguage);
     if (!u) return 'wrong';
     if (u === c) return 'correct';
     const dist = levenshtein(u, c);
@@ -205,11 +257,12 @@ function updateCheckCols() {
 /* ===== Подсказка ===== */
 function hintPrefix(word) {
     const w = word || '';
-    const lang = currentLang();
-    if (lang === 'ge') {
+    if (currentLanguage === 'de') {
         if (w.startsWith('der ')) return 'der ';
         if (w.startsWith('die ')) return 'die ';
         if (w.startsWith('das ')) return 'das ';
+    } else if (currentLanguage === 'tr') {
+        // в турецком артиклей нет
     } else {
         if (w.startsWith('to '))  return 'to ';
         if (w.startsWith('the ')) return 'the ';
@@ -244,11 +297,11 @@ function hintLockLength(correctAnswer) {
 }
 
 /* ===== Прогресс ===== */
-function progressKey(level) { return 'wordlist_progress_' + level; }
+function progressKey() { return 'wordlist_progress_' + storageLevelKey(); }
 
-function loadProgress(level) {
+function loadProgress() {
     try {
-        const raw = localStorage.getItem(progressKey(level));
+        const raw = localStorage.getItem(progressKey());
         if (!raw) return { learned: [] };
         const obj = JSON.parse(raw);
         return { learned: Array.isArray(obj.learned) ? obj.learned : [] };
@@ -256,19 +309,19 @@ function loadProgress(level) {
         return { learned: [] };
     }
 }
-function saveProgress(level, progress) {
-    try { localStorage.setItem(progressKey(level), JSON.stringify(progress)); } catch (_) {}
+function saveProgress(progress) {
+    try { localStorage.setItem(progressKey(), JSON.stringify(progress)); } catch (_) {}
 }
-function resetProgress(level) {
-    try { localStorage.removeItem(progressKey(level)); } catch (_) {}
+function resetProgress() {
+    try { localStorage.removeItem(progressKey()); } catch (_) {}
 }
 
 /* ===== История ===== */
-function historyKey(level) { return 'wordlist_history_' + level; }
+function historyKey() { return 'wordlist_history_' + storageLevelKey(); }
 
-function loadHistory(level) {
+function loadHistory() {
     try {
-        const raw = localStorage.getItem(historyKey(level));
+        const raw = localStorage.getItem(historyKey());
         if (!raw) return [];
         const arr = JSON.parse(raw);
         return Array.isArray(arr) ? arr : [];
@@ -276,15 +329,15 @@ function loadHistory(level) {
         return [];
     }
 }
-function saveHistory(level, list) {
+function saveHistory(list) {
     try {
-        localStorage.setItem(historyKey(level), JSON.stringify(list.slice(0, HISTORY_MAX)));
+        localStorage.setItem(historyKey(), JSON.stringify(list.slice(0, HISTORY_MAX)));
     } catch (_) {}
 }
-function pushHistory(level, entry) {
-    const list = loadHistory(level);
+function pushHistory(entry) {
+    const list = loadHistory();
     list.unshift(entry);
-    saveHistory(level, list.slice(0, HISTORY_MAX));
+    saveHistory(list.slice(0, HISTORY_MAX));
 }
 
 /* ===== Шапка ===== */
@@ -299,7 +352,6 @@ function updateHeader() {
 
     trainSlot.style.display = (screen === 'train' || screen === 'check' || screen === 'results') ? 'flex' : 'none';
 
-    // Таймер виден только на тренировке и только если время ограничено
     const showTimer = (screen === 'train') && sessionTime > 0;
     timerWrap.style.display = showTimer ? '' : 'none';
 
@@ -330,7 +382,6 @@ function formatTime(sec) {
 function startTimer() {
     stopTimer();
 
-    // 0 = без ограничений
     if (sessionTime === 0) {
         timerValue.textContent = '';
         return;
@@ -351,16 +402,15 @@ function startTimer() {
         timerValue.textContent = formatTime(timerRemaining);
     }, 1000);
 }
-
 function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
 /* ===== Прогресс-бар + иконка уровня ===== */
 function updateProgressBar() {
-    const bank = BANKS[currentLevel] || [];
+    const bank = getBank(currentLevel) || [];
     const total = bank.length;
-    const prog = loadProgress(currentLevel);
+    const prog = loadProgress();
     const learned = prog.learned.length;
 
     const pct = total ? Math.round(learned / total * 100) : 0;
@@ -369,22 +419,21 @@ function updateProgressBar() {
     progressCount.textContent = `${learned} / ${total}`;
 
     const color = levelColors[currentLevel] || '#e0e0e0';
-    homeLevelIcon.textContent = levelIconLabel(currentLevel);
+    homeLevelIcon.textContent = levelIconLabel();
     homeLevelIcon.dataset.level = currentLevel;
     homeLevelIcon.style.background = color;
 }
 
 /* ===== Кнопки уровней в шапке истории ===== */
 function renderLevelTabs() {
-    const enabled = levels.filter(l => l.enabled);
+    const enabled = levels.filter(l => l.enabled && hasBank(l.code));
 
     levelsTabs.innerHTML = enabled.map(lvl => {
         const color = levelColors[lvl.code] || '#e0e0e0';
         const isActive = lvl.code === currentLevel;
         const cls = isActive ? 'level-tab active' : 'level-tab';
         const style = isActive ? `background:${color};` : '';
-        const title = lvl.lang === 'ge' ? 'GE ' + lvl.label : lvl.label;
-        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${title}</button>`;
+        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
     }).join('');
 
     levelsTabs.querySelectorAll('.level-tab').forEach(tab => {
@@ -402,43 +451,36 @@ function renderLevelTabs() {
 
 /* ===== Главный экран ===== */
 function renderHome() {
-    const enLevels = levels.filter(l => l.lang === 'en');
-    const geLevels = levels.filter(l => l.lang === 'ge');
+    // Если текущий уровень недоступен для текущего языка — переключаемся на первый доступный
+    if (!hasBank(currentLevel)) {
+        const first = levels.find(l => l.enabled && hasBank(l.code));
+        if (first) currentLevel = first.code;
+    }
 
-    const renderBtn = (lvl) => {
-        const hasBank = !!BANKS[lvl.code];
-        const isActive = lvl.code === currentLevel && hasBank;
+    const levelsHtml = levels.map(lvl => {
+        const bankExists = hasBank(lvl.code);
+        const isActive = lvl.code === currentLevel && bankExists;
 
         let cls = 'level-btn';
         let style = '';
 
-        if (!hasBank) {
+        if (!bankExists) {
             cls += ' disabled';
         } else if (isActive) {
             cls += ' active';
             style = `background:${levelColors[lvl.code] || '#e0e0e0'};`;
         }
 
-        const disabled = hasBank ? '' : 'disabled';
-        return `<button class="${cls}" data-level="${lvl.code}" data-lang="${lvl.lang}" style="${style}" ${disabled}>${lvl.label}</button>`;
-    };
+        const disabled = bankExists ? '' : 'disabled';
+        return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
+    }).join('');
 
-    const enHtml = enLevels.map(renderBtn).join('');
-    const geHtml = geLevels.map(renderBtn).join('');
-
-    const hasBank = !!BANKS[currentLevel];
-    const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
+    const canStart = hasBank(currentLevel);
+    const startCls = canStart ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
         <div class="home-layout">
-            <div class="levels-column">
-                <div class="levels-column-title">EN</div>
-                ${enHtml}
-            </div>
-            <div class="levels-column">
-                <div class="levels-column-title">GE</div>
-                ${geHtml}
-            </div>
+            <div class="levels-column">${levelsHtml}</div>
             <button class="${startCls}" id="startBtn">
                 Начать тренировку
             </button>
@@ -457,8 +499,8 @@ function renderHome() {
     });
 
     document.getElementById('startBtn').addEventListener('click', () => {
-        if (!BANKS[currentLevel]) {
-            alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+        if (!hasBank(currentLevel)) {
+            alert('База для уровня ' + currentLevel + ' на этом языке ещё не подключена.');
             return;
         }
         startSession();
@@ -469,20 +511,20 @@ function renderHome() {
 
 /* ===== Старт сессии ===== */
 function startSession() {
-    const bank = BANKS[currentLevel];
+    const bank = getBank(currentLevel);
     if (!bank || !bank.length) {
-        alert('База для уровня ' + currentLevel + ' ещё не подключена.');
+        alert('База для уровня ' + currentLevel + ' на этом языке ещё не подключена.');
         return;
     }
 
     const size = sessionSize;
 
-    const prog = loadProgress(currentLevel);
+    const prog = loadProgress();
     const learnedSet = new Set(prog.learned);
 
     let fresh = bank.filter(w => !learnedSet.has(w.en));
     if (fresh.length < size) {
-        resetProgress(currentLevel);
+        resetProgress();
         fresh = bank.slice();
     }
 
@@ -878,7 +920,7 @@ function updateCheckHighlight() {
 
 /* ===== Прогресс после проверки ===== */
 function commitProgress() {
-    const prog = loadProgress(currentLevel);
+    const prog = loadProgress();
     const learnedSet = new Set(prog.learned);
 
     sessionWords.forEach((item, i) => {
@@ -887,7 +929,7 @@ function commitProgress() {
     });
 
     prog.learned = Array.from(learnedSet);
-    saveProgress(currentLevel, prog);
+    saveProgress(prog);
 }
 
 /* ===== Результаты ===== */
@@ -921,7 +963,7 @@ function renderResults() {
     view.innerHTML = `
         <div class="results-area">
             <div class="results-summary">
-                <span class="pill total">${currentLevel} · ${total}</span>
+                <span class="pill total">${langShort(currentLanguage)} ${currentLevel} · ${total}</span>
                 <span class="pill green">${correct} · ${pct(correct)}%</span>
                 <span class="pill orange">${close} · ${pct(close)}%</span>
                 <span class="pill red">${wrong} · ${pct(wrong)}%</span>
@@ -947,11 +989,11 @@ function renderResults() {
 function renderHistory() {
     renderLevelTabs();
 
-    const history = loadHistory(currentLevel);
+    const history = loadHistory();
 
     let body = '';
     if (!history.length) {
-        body = `<div class="history-empty">Пока нет ни одной попытки для уровня ${currentLevel}.</div>`;
+        body = `<div class="history-empty">Пока нет ни одной попытки для ${langShort(currentLanguage)} ${currentLevel}.</div>`;
     } else {
         const rows = history.map((rec, i) => {
             const total = rec.total || 0;
@@ -999,12 +1041,14 @@ function renderHistory() {
 
 /* ===== Просмотр одной попытки из истории ===== */
 function showHistoryEntry(historyIndex) {
-    const history = loadHistory(currentLevel);
+    const history = loadHistory();
     const rec = history[historyIndex];
     if (!rec) { renderHistory(); return; }
 
     const snap = sessionSnapshots.find(s =>
-        s.level === currentLevel && s.date === rec.date
+        s.lang === currentLanguage &&
+        s.level === currentLevel &&
+        s.date === rec.date
     );
 
     if (!snap) {
@@ -1029,7 +1073,7 @@ function showHistoryEntry(historyIndex) {
 
     const rows = snap.items.map(it => {
         const userAns = it.userAnswer || '';
-        const lang = snap.level.startsWith('GE_') ? 'ge' : 'en';
+        const lang = snap.lang;
         const cleaned = userAns.replace(/\*/g, '');
         const u = normalize(cleaned, lang);
         const c = normalize(it.en, lang);
@@ -1096,6 +1140,11 @@ function renderSettings() {
         <div class="settings-area">
             <h1 class="settings-title">Настройки</h1>
 
+            <div class="settings-row" id="rowLang">
+                <span>Язык</span>
+                <button class="size-btn" id="langBtn">${langLabel(currentLanguage)}</button>
+            </div>
+
             <div class="settings-row" id="rowHints">
                 <label class="switch">
                     <input type="checkbox" id="hintsToggle" ${hintsOn ? 'checked' : ''}>
@@ -1124,6 +1173,22 @@ function renderSettings() {
         </div>
     `;
 
+    /* Язык */
+    const switchLang = () => {
+        currentLanguage = nextLang(currentLanguage);
+        saveLang(currentLanguage);
+        renderSettings();
+    };
+    document.getElementById('rowLang').addEventListener('click', (e) => {
+        if (e.target.closest('.size-btn')) return;
+        switchLang();
+    });
+    document.getElementById('langBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        switchLang();
+    });
+
+    /* Первая буква */
     document.getElementById('rowHints').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('hintsToggle');
@@ -1134,6 +1199,7 @@ function renderSettings() {
         saveHints(e.target.checked);
     });
 
+    /* Длина слова */
     document.getElementById('rowLength').addEventListener('click', (e) => {
         if (e.target.closest('.switch')) return;
         const input = document.getElementById('lengthToggle');
@@ -1144,36 +1210,37 @@ function renderSettings() {
         saveLength(e.target.checked);
     });
 
-    document.getElementById('rowSize').addEventListener('click', (e) => {
-        if (e.target.closest('.size-btn')) return;
+    /* Размер */
+    const nextSize = () => {
         sessionSize = (sessionSize === 20) ? 40 :
                       (sessionSize === 40) ? 60 : 20;
         saveSessionSize(sessionSize);
         renderSettings();
+    };
+    document.getElementById('rowSize').addEventListener('click', (e) => {
+        if (e.target.closest('.size-btn')) return;
+        nextSize();
     });
     document.getElementById('sizeBtn').addEventListener('click', (e) => {
         e.stopPropagation();
-        sessionSize = (sessionSize === 20) ? 40 :
-                      (sessionSize === 40) ? 60 : 20;
-        saveSessionSize(sessionSize);
-        renderSettings();
+        nextSize();
     });
 
-    document.getElementById('rowTime').addEventListener('click', (e) => {
-        if (e.target.closest('.size-btn')) return;
+    /* Время */
+    const nextTime = () => {
         sessionTime = (sessionTime === 60)  ? 120 :
                       (sessionTime === 120) ? 180 :
                       (sessionTime === 180) ? 0   : 60;
         saveSessionTime(sessionTime);
         renderSettings();
+    };
+    document.getElementById('rowTime').addEventListener('click', (e) => {
+        if (e.target.closest('.size-btn')) return;
+        nextTime();
     });
     document.getElementById('timeBtn').addEventListener('click', (e) => {
         e.stopPropagation();
-        sessionTime = (sessionTime === 60)  ? 120 :
-                      (sessionTime === 120) ? 180 :
-                      (sessionTime === 180) ? 0   : 60;
-        saveSessionTime(sessionTime);
-        renderSettings();
+        nextTime();
     });
 
     updateHeader();
@@ -1263,9 +1330,10 @@ finishBtn.addEventListener('click', () => {
             hour: '2-digit', minute: '2-digit'
         });
 
-        pushHistory(currentLevel, { date: dateStr, correct, close, wrong, total });
+        pushHistory({ date: dateStr, correct, close, wrong, total });
 
         sessionSnapshots.unshift({
+            lang: currentLanguage,
             level: currentLevel,
             date: dateStr,
             correct, close, wrong, total,
