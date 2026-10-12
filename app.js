@@ -734,14 +734,12 @@ function renderTrain() {
         updateTrainCard();
     });
 
-    // Клик по квадрату значения — повторная озвучка
     const faceSquare = document.getElementById('faceSquare');
     faceSquare.addEventListener('click', () => {
         const w = sessionWords[currentPerson];
         speakWord(w.en);
     });
 
-    // Клик по плашке слова — повторная озвучка
     const namePlate = document.getElementById('namePlate');
     namePlate.addEventListener('click', () => {
         const w = sessionWords[currentPerson];
@@ -967,9 +965,18 @@ function renderCheckOne() {
         }
 
         try { inp.focus({ preventScroll: true }); } catch (_) {}
+
+        // На мобильных — поднять карточку над клавиатурой
+        if (window.visualViewport && window.innerWidth <= 720) {
+            setTimeout(() => {
+                const fs = document.getElementById('faceSquare');
+                if (fs) {
+                    try { fs.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
+                }
+            }, 300);
+        }
     }
 
-    // Клик по квадрату значения — повторная озвучка
     const fs = document.getElementById('faceSquare');
     if (fs) {
         fs.addEventListener('click', () => {
@@ -1907,11 +1914,27 @@ document.addEventListener('keydown', handleCheckOneKey);
     if (!window.visualViewport) return;
 
     const root = document.documentElement;
+    const stage = document.querySelector('.stage');
+    const wrapper = document.querySelector('.wrapper');
 
     const update = () => {
         const vv = window.visualViewport;
         const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         root.style.setProperty('--keyboard-offset', hidden + 'px');
+
+        if (hidden > 50) {
+            stage.style.height = vv.height + 'px';
+            stage.style.minHeight = '0';
+            stage.style.overflow = 'hidden';
+            wrapper.style.overflowY = 'auto';
+            wrapper.style.paddingBottom = '0.5em';
+        } else {
+            stage.style.height = '';
+            stage.style.minHeight = '';
+            stage.style.overflow = '';
+            wrapper.style.overflowY = '';
+            wrapper.style.paddingBottom = '';
+        }
     };
 
     window.visualViewport.addEventListener('resize', update);
