@@ -3,7 +3,7 @@
    ge_a1.js (нем.), tr_b2.js (тур.). */
 
 /* ===== Supabase ===== */
-const SUPABASE_URL = 'https://ВАШ_PROJECT_REF.supabase.co'; // ← заменить на ваш URL
+const SUPABASE_URL = 'https://stojqwedqwijwjmneacy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0b2pxd2VkcXdpandqbW5lYWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4Mzc1MjMsImV4cCI6MjEwNzQxMzUyM30.i7x48BSVyHT2m9MRotbl2tLbpzxOLyU5ZPzSdj3tq44';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
