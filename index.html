@@ -51,13 +51,13 @@
 
         /* ===== Шапка ===== */
         .topbar {
-            min-height: 80px; flex: 0 0 auto;
+            min-height: 72px; flex: 0 0 auto;
             background: #1b1c1d; color: rgba(255,255,255,0.9);
             z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         .topbar-inner {
             position: relative;
-            min-height: 80px;
+            min-height: 72px;
             padding: 0 1em 0 1.5em;
             display: flex; align-items: center; gap: 0.5em;
             flex-wrap: wrap;
@@ -259,7 +259,8 @@
         .topbar-inner.mode-home  .center-slot { display: none; }
 
         @media (max-width: 720px) {
-            .topbar-inner { padding: 0 0.6em 0 0.9em; gap: 0.3em; }
+            .topbar { min-height: 62px; }
+            .topbar-inner { min-height: 62px; padding: 0 0.6em 0 0.9em; gap: 0.3em; }
             .brand { margin-right: 0; }
 
             .lang-badge { min-width: 46px; height: 46px; font-size: 15px; padding: 0 0.6em; }
@@ -282,7 +283,8 @@
         }
 
         @media (max-width: 560px) {
-            .topbar-inner { padding: 0 0.5em 0 0.6em; gap: 0.25em; }
+            .topbar { min-height: 56px; }
+            .topbar-inner { min-height: 56px; padding: 0 0.5em 0 0.6em; gap: 0.25em; }
 
             .lang-badge { min-width: 40px; height: 40px; font-size: 13px; padding: 0 0.5em; }
             .level-icon { width: 40px; height: 40px; font-size: 13px; }
@@ -306,6 +308,9 @@
         }
 
         @media (max-width: 400px) {
+            .topbar { min-height: 54px; }
+            .topbar-inner { min-height: 54px; }
+
             .timer { font-size: 11px; }
             .timer b { font-size: 14px; min-width: 2em; }
             .history-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
