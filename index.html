@@ -80,7 +80,7 @@
             background: #e57373;
             color: #fff;
             font-family: inherit;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 700;
             line-height: 1;
             letter-spacing: -0.02em;
@@ -91,6 +91,7 @@
         }
         .level-icon:active { transform: scale(0.95); }
         .level-icon[data-level="B1"] { color: #000; }
+        .level-icon[data-level="GE_A1"] { font-size: 10px; }
 
         .progress-wrap {
             display: none;
@@ -238,7 +239,7 @@
         @media (max-width: 720px) {
             .topbar-inner { padding: 0 0.5em 0 0.75em; gap: 0.25em; }
             .brand { margin-right: 0; }
-            .level-icon { width: 28px; height: 28px; font-size: 12px; }
+            .level-icon { width: 28px; height: 28px; font-size: 10px; }
 
             .history-btn { height: 28px; padding: 0 0.6em; font-size: 11px; }
             .settings-btn { width: 28px; height: 28px; }
@@ -271,7 +272,7 @@
             .progress-bar { width: 60px; height: 9px; }
             .progress-count { font-size: 10px; }
             .progress-wrap { margin-left: 0.5em; gap: 0.35em; }
-            .level-icon { width: 26px; height: 26px; font-size: 11px; }
+            .level-icon { width: 26px; height: 26px; font-size: 9px; }
         }
 
         @media (max-width: 400px) {
@@ -290,24 +291,34 @@
         .home-layout {
             display: flex;
             align-items: stretch;
-            gap: 1.5em;
+            gap: 1.25em;
             margin-top: 1em;
             margin-left: 2em;
             margin-right: 2em;
-            max-width: 900px;
+            max-width: 960px;
+            flex-wrap: wrap;
         }
 
-        .levels-grid {
+        .levels-column {
             display: flex;
             flex-direction: column;
-            gap: 0.6em;
+            gap: 0.4em;
             flex: 0 0 auto;
             width: 200px;
         }
 
+        .levels-column-title {
+            color: #4a4a4a;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-align: center;
+            padding: 0 0 0.25em;
+        }
+
         .level-btn {
             width: 100%;
-            height: 52px;
+            height: 48px;
             border: none;
             border-radius: 6px;
             font-family: inherit;
@@ -342,7 +353,7 @@
             border: none;
             border-radius: 8px;
             font-family: inherit;
-            font-size: 48px;
+            font-size: 44px;
             line-height: 1.1;
             font-weight: 700;
             color: #fff;
@@ -367,37 +378,27 @@
         }
         .start-btn.disabled:hover { background: #4a4a4a; }
 
-        @media (max-width: 720px) {
+        @media (max-width: 900px) {
             .home-layout {
                 margin-left: 1em;
                 margin-right: 1em;
                 gap: 1em;
             }
-            .levels-grid {
-                width: 150px;
-            }
-            .level-btn {
-                height: 44px;
-                font-size: 17px;
-            }
+            .levels-column { width: 150px; }
+            .level-btn { height: 40px; font-size: 17px; }
             .start-btn { font-size: 34px; min-width: 160px; }
         }
 
-        @media (max-width: 560px) {
+        @media (max-width: 640px) {
             .home-layout {
                 margin-left: 0.5em;
                 margin-right: 0.5em;
-                gap: 0.75em;
+                gap: 0.6em;
             }
-            .levels-grid {
-                width: 110px;
-                gap: 0.4em;
-            }
-            .level-btn {
-                height: 38px;
-                font-size: 15px;
-            }
-            .start-btn { font-size: 26px; min-width: 120px; }
+            .levels-column { width: 110px; gap: 0.3em; }
+            .levels-column-title { font-size: 11px; }
+            .level-btn { height: 34px; font-size: 14px; }
+            .start-btn { font-size: 22px; min-width: 100px; }
         }
 
         /* ===== Экран настроек ===== */
@@ -531,8 +532,8 @@
         }
 
         .face-square {
-            width: min(46vh, 380px);
-            aspect-ratio: 1 / 0.75;
+            width: min(38vh, 320px);
+            aspect-ratio: 1 / 0.85;
             background: #ffffff;
             border: 4px solid #ffffff;
             box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
@@ -549,15 +550,30 @@
         }
 
         .name-plate {
-            width: min(46vh, 380px); padding: 0.4em 1em;
+            width: min(38vh, 320px); padding: 0.4em 1em;
             background: #ffffff; border-radius: 8px; text-align: center;
-            font-size: clamp(22px, 2.4vw + 1vh, 38px);
+            font-size: clamp(22px, 2.4vw + 1vh, 34px);
             font-weight: 500;
             color: #212121; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: clip;
             line-height: 1.1;
+        }
+
+        .example-plate {
+            width: min(38vh, 320px);
+            padding: 0.6em 1em;
+            background: #ffffff;
+            border-radius: 8px;
+            text-align: center;
+            font-size: clamp(14px, 1.6vw + 0.8vh, 20px);
+            font-weight: 400;
+            color: #212121;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            line-height: 1.25;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .train-controls { display: flex; gap: 0.5em; }
@@ -727,6 +743,8 @@
         .history-table td.ok    { color: #1e8449; font-weight: 600; }
         .history-table td.close { color: #b9770e; font-weight: 600; }
         .history-table td.wrong { color: #a93226; font-weight: 600; }
+        .history-row { cursor: pointer; }
+        .history-row:hover td { background: #f9f9f9; }
     </style>
 </head>
 <body>
@@ -775,6 +793,7 @@
     <script src="a2.js"></script>
     <script src="b1.js"></script>
     <script src="b2.js"></script>
+    <script src="ge_a1.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
