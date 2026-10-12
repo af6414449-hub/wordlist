@@ -366,6 +366,73 @@ function speakWord(text) {
     try { window.speechSynthesis.speak(u); } catch (_) {}
 }
 
+/* ===== Свайпы для карточек ===== */
+function setupSwipeOn(element, onLeft, onRight) {
+    if (!element) return;
+
+    let startX = 0, startY = 0, startTime = 0;
+    let tracking = false;
+    let lockedAxis = null;
+
+    const THRESHOLD = 60;
+    const MAX_TIME  = 600;
+    const AXIS_LOCK = 10;
+
+    element.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        const tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
+            tracking = false;
+            return;
+        }
+        tracking = true;
+        lockedAxis = null;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startTime = Date.now();
+    }, { passive: true });
+
+    element.addEventListener('touchmove', (e) => {
+        if (!tracking) return;
+        if (e.touches.length !== 1) return;
+
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+
+        if (lockedAxis === null) {
+            if (Math.abs(dx) > AXIS_LOCK || Math.abs(dy) > AXIS_LOCK) {
+                lockedAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+            }
+        }
+
+        if (lockedAxis === 'x') {
+            if (e.cancelable) e.preventDefault();
+        }
+    }, { passive: false });
+
+    element.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+
+        if (lockedAxis !== 'x') return;
+
+        const dt = Date.now() - startTime;
+        if (dt > MAX_TIME) return;
+
+        const t = e.changedTouches && e.changedTouches[0];
+        if (!t) return;
+
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+
+        if (Math.abs(dx) < THRESHOLD) return;
+        if (Math.abs(dy) > Math.abs(dx)) return;
+
+        if (dx < 0) onLeft && onLeft();
+        else        onRight && onRight();
+    }, { passive: true });
+}
+
 /* ===== Прогресс (только Supabase) ===== */
 async function loadProgress() {
     if (!currentUser) return { learned: [] };
@@ -734,15 +801,32 @@ function renderTrain() {
         updateTrainCard();
     });
 
+    // Клик по квадрату — повторная озвучка
     const faceSquare = document.getElementById('faceSquare');
     faceSquare.addEventListener('click', () => {
-        if (currentPerson < sessionWords.length - 1) {
-            currentPerson++;
-            updateTrainCard();
-        } else {
-            goToCheck();
-        }
+        const w = sessionWords[currentPerson];
+        speakWord(w.en);
     });
+
+    // Свайпы по train-area
+    const trainArea = document.querySelector('.train-area');
+    setupSwipeOn(
+        trainArea,
+        () => {
+            if (currentPerson < sessionWords.length - 1) {
+                currentPerson++;
+                updateTrainCard();
+            } else {
+                goToCheck();
+            }
+        },
+        () => {
+            if (currentPerson > 0) {
+                currentPerson--;
+                updateTrainCard();
+            }
+        }
+    );
 
     updateTrainCard();
     updateHeader();
@@ -966,6 +1050,41 @@ function renderCheckOne() {
         try { inp.focus({ preventScroll: true }); } catch (_) {}
     }
 
+    // Клик по квадрату — повторная озвучка
+    const fs = document.getElementById('faceSquare');
+    if (fs) {
+        fs.addEventListener('click', () => {
+            const w = sessionWords[currentPerson];
+            speakWord(w.en);
+        });
+    }
+
+    // Свайпы по train-area
+    const trainArea = document.querySelector('.train-area');
+    setupSwipeOn(
+        trainArea,
+        () => {
+            saveOneInput();
+            if (currentPerson < sessionWords.length - 1) {
+                currentPerson++;
+                renderCheckOne();
+                updateHeader();
+            } else {
+                checkPhase = 'result';
+                renderCheckOne();
+                updateHeader();
+            }
+        },
+        () => {
+            saveOneInput();
+            if (currentPerson > 0) {
+                currentPerson--;
+                renderCheckOne();
+                updateHeader();
+            }
+        }
+    );
+
     ensureThumbVisible();
 }
 
@@ -1093,7 +1212,6 @@ function handleCheckOneKey(e) {
     const tag = (e.target && e.target.tagName) || '';
     const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable));
 
-    // Enter в поле ввода — к следующей карточке / к результатам
     if (inInput && e.key === 'Enter') {
         e.preventDefault();
         saveOneInput();
@@ -1109,7 +1227,6 @@ function handleCheckOneKey(e) {
         return;
     }
 
-    // Стрелки вне поля ввода
     if (inInput) return;
 
     if (e.key === 'ArrowRight') {
@@ -1414,7 +1531,6 @@ async function initAuth() {
     sb.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user || null;
 
-        // Переход по ссылке восстановления пароля
         if (event === 'PASSWORD_RECOVERY') {
             resetMode = 'update';
             resetEmail.value = session?.user?.email || '';
