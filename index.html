@@ -51,13 +51,13 @@
 
         /* ===== Шапка ===== */
         .topbar {
-            min-height: 64px; flex: 0 0 auto;
+            min-height: 80px; flex: 0 0 auto;
             background: #1b1c1d; color: rgba(255,255,255,0.9);
             z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         .topbar-inner {
             position: relative;
-            min-height: 64px;
+            min-height: 80px;
             padding: 0 1em 0 1.5em;
             display: flex; align-items: center; gap: 0.5em;
             flex-wrap: wrap;
@@ -75,14 +75,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 44px;
-            height: 44px;
-            padding: 0 0.6em;
-            border-radius: 8px;
+            min-width: 56px;
+            height: 56px;
+            padding: 0 0.8em;
+            border-radius: 10px;
             background: rgba(255,255,255,0.15);
             color: #fff;
             font-family: inherit;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 700;
             line-height: 1;
             letter-spacing: 0.02em;
@@ -94,13 +94,13 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
             background: #e57373;
             color: #fff;
             font-family: inherit;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 700;
             line-height: 1;
             letter-spacing: -0.02em;
@@ -122,10 +122,10 @@
         }
         .progress-bar {
             position: relative;
-            width: 160px;
-            height: 14px;
+            width: 180px;
+            height: 16px;
             background: rgba(255,255,255,0.15);
-            border-radius: 7px;
+            border-radius: 8px;
             overflow: hidden;
             flex: 0 0 auto;
         }
@@ -133,12 +133,12 @@
             position: absolute;
             top: 0; left: 0; bottom: 0;
             background: #2ecc71;
-            border-radius: 7px;
+            border-radius: 8px;
             transition: width 0.3s;
         }
         .progress-count {
             color: #fff;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
@@ -153,11 +153,11 @@
         }
         .level-tab {
             display: inline-flex; align-items: center; justify-content: center;
-            min-width: 46px; height: 32px; padding: 0 0.7em;
-            border-radius: 6px;
+            min-width: 56px; height: 40px; padding: 0 0.9em;
+            border-radius: 8px;
             border: none;
             font-family: inherit;
-            font-size: 14px; font-weight: 700;
+            font-size: 17px; font-weight: 700;
             color: #fff;
             cursor: pointer;
             transition: background 0.15s, color 0.15s, opacity 0.15s;
@@ -180,11 +180,11 @@
         }
         .timer {
             color: rgba(255,255,255,0.75);
-            font-size: 15px; white-space: nowrap;
+            font-size: 17px; white-space: nowrap;
             overflow: hidden; text-overflow: ellipsis;
         }
         .timer b {
-            color: #fff; font-size: 18px; margin-left: 0.25em;
+            color: #fff; font-size: 21px; margin-left: 0.25em;
             font-variant-numeric: tabular-nums;
             display: inline-block; min-width: 2.6em; text-align: right;
         }
@@ -197,11 +197,11 @@
 
         .history-btn {
             display: inline-flex; align-items: center; gap: 0.4em;
-            height: 44px; padding: 0 1.3em;
+            height: 56px; padding: 0 1.6em;
             background: #8e44ad;
             color: #fff;
-            border: none; border-radius: 8px;
-            font-size: 16px; font-weight: 600;
+            border: none; border-radius: 10px;
+            font-size: 19px; font-weight: 600;
             font-family: inherit; cursor: pointer;
             transition: background 0.15s;
             white-space: nowrap;
@@ -214,18 +214,18 @@
 
         .settings-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 44px; height: 44px;
+            width: 56px; height: 56px;
             padding: 0;
             background: rgba(255,255,255,0.12);
             color: #fff;
-            border: none; border-radius: 8px;
+            border: none; border-radius: 10px;
             cursor: pointer;
             transition: background 0.15s, color 0.15s;
         }
         .settings-btn:hover { background: rgba(255,255,255,0.2); }
         .settings-btn.active { background: rgba(255,255,255,0.25); }
         .settings-btn svg {
-            width: 24px; height: 24px;
+            width: 30px; height: 30px;
             display: block;
         }
 
@@ -243,8 +243,8 @@
         .center-slot > * { pointer-events: auto; }
 
         .finish-btn {
-            background: #2ecc71; color: #fff; border: none; border-radius: 8px;
-            padding: 0.55em 1.6em; font-size: 17px; font-weight: 600;
+            background: #2ecc71; color: #fff; border: none; border-radius: 10px;
+            padding: 0.7em 2em; font-size: 19px; font-weight: 600;
             font-family: inherit; cursor: pointer;
             transition: background 0.15s, transform 0.1s;
             white-space: nowrap;
@@ -262,59 +262,73 @@
             .topbar-inner { padding: 0 0.6em 0 0.9em; gap: 0.3em; }
             .brand { margin-right: 0; }
 
-            .lang-badge { min-width: 38px; height: 38px; font-size: 12px; padding: 0 0.5em; }
-            .level-icon { width: 38px; height: 38px; font-size: 12px; }
+            .lang-badge { min-width: 46px; height: 46px; font-size: 15px; padding: 0 0.6em; }
+            .level-icon { width: 46px; height: 46px; font-size: 15px; }
 
-            .history-btn { height: 38px; padding: 0 0.9em; font-size: 14px; }
-            .history-btn.auth-btn { font-size: 14px; padding: 0 0.9em; }
-            .settings-btn { width: 38px; height: 38px; }
-            .settings-btn svg { width: 20px; height: 20px; }
+            .history-btn { height: 46px; padding: 0 1.1em; font-size: 16px; }
+            .history-btn.auth-btn { font-size: 16px; padding: 0 1.1em; }
+            .settings-btn { width: 46px; height: 46px; }
+            .settings-btn svg { width: 24px; height: 24px; }
 
-            .timer { font-size: 13px; }
-            .timer b { font-size: 16px; min-width: 2.4em; }
+            .timer { font-size: 14px; }
+            .timer b { font-size: 18px; min-width: 2.4em; }
 
-            .finish-btn { padding: 0.45em 1.1em; font-size: 15px; }
+            .finish-btn { padding: 0.55em 1.4em; font-size: 17px; }
 
-            .progress-bar { width: 110px; height: 12px; }
-            .progress-count { font-size: 13px; }
+            .progress-bar { width: 130px; height: 14px; }
+            .progress-count { font-size: 14px; }
 
-            .level-tab { min-width: 40px; height: 28px; font-size: 13px; }
+            .level-tab { min-width: 46px; height: 34px; font-size: 15px; }
         }
 
         @media (max-width: 560px) {
             .topbar-inner { padding: 0 0.5em 0 0.6em; gap: 0.25em; }
 
-            .lang-badge { min-width: 34px; height: 34px; font-size: 11px; padding: 0 0.4em; }
-            .level-icon { width: 34px; height: 34px; font-size: 11px; }
+            .lang-badge { min-width: 40px; height: 40px; font-size: 13px; padding: 0 0.5em; }
+            .level-icon { width: 40px; height: 40px; font-size: 13px; }
 
-            .history-btn { font-size: 12px; padding: 0 0.7em; height: 34px; }
-            .settings-btn { width: 34px; height: 34px; }
-            .settings-btn svg { width: 18px; height: 18px; }
+            .history-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
+            .history-btn.auth-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
+            .settings-btn { width: 40px; height: 40px; }
+            .settings-btn svg { width: 22px; height: 22px; }
 
-            .timer { font-size: 11px; }
-            .timer b { font-size: 14px; min-width: 2.2em; }
+            .timer { font-size: 12px; }
+            .timer b { font-size: 15px; min-width: 2.2em; }
 
             .center-slot { gap: 0.3em; }
-            .finish-btn { padding: 0.4em 0.8em; font-size: 13px; }
+            .finish-btn { padding: 0.45em 1em; font-size: 15px; }
 
-            .progress-bar { width: 80px; height: 11px; }
-            .progress-count { font-size: 12px; }
-            .progress-wrap { margin-left: 0.6em; gap: 0.4em; }
+            .progress-bar { width: 100px; height: 12px; }
+            .progress-count { font-size: 13px; }
+            .progress-wrap { margin-left: 0.5em; gap: 0.4em; }
+
+            .level-tab { min-width: 40px; height: 30px; font-size: 14px; }
         }
 
         @media (max-width: 400px) {
-            .timer { font-size: 10px; }
-            .timer b { font-size: 13px; min-width: 2em; }
-            .history-btn { font-size: 11px; padding: 0 0.55em; height: 32px; }
-            .settings-btn { width: 32px; height: 32px; }
-            .settings-btn svg { width: 16px; height: 16px; }
+            .timer { font-size: 11px; }
+            .timer b { font-size: 14px; min-width: 2em; }
+            .history-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
+            .history-btn.auth-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
+            .settings-btn { width: 38px; height: 38px; }
+            .settings-btn svg { width: 20px; height: 20px; }
+            .lang-badge, .level-icon { min-width: 36px; height: 36px; font-size: 12px; }
         }
 
         .wrapper {
-            flex: 1 1 auto; padding: 1em 1em 1em 2em;
+            flex: 1 1 auto;
+            padding: 1em 1em 1em 2em;
             display: flex; flex-direction: column; min-height: 0;
+            padding-bottom: calc(1em + var(--keyboard-offset, 0px));
         }
         .view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+
+        @media (max-width: 720px) {
+            .wrapper {
+                padding: 0.5em 0.5em 0.5em 0.75em;
+                padding-bottom: calc(0.5em + var(--keyboard-offset, 0px));
+            }
+        }
 
         /* ===== Главный экран ===== */
         .home-layout {
