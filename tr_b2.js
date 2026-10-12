@@ -5,7 +5,7 @@
    ru — перевод
    ex — пример использования (показывается только на экране запоминания) */
 
-const WORDS_TR = [
+const WORDS_TR_B2 = [
     { en: 'aseton',                pos: '-',   ru: 'ацетон',                        ex: 'Aseton ile ojeyi çıkardı.' },
     { en: 'buhar',                 pos: '-',   ru: 'пар',                           ex: 'Çaydan buhar çıkıyor.' },
     { en: 'buruşuk',               pos: 'adj', ru: 'морщинистый',                   ex: 'Buruşuk bir gömlek giyiyordu.' },
