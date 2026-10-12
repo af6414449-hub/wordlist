@@ -259,57 +259,55 @@
         .topbar-inner.mode-home  .center-slot { display: none; }
 
         @media (max-width: 720px) {
-            .topbar-inner { padding: 0 0.5em 0 0.75em; gap: 0.25em; }
-            .brand { margin-right: 0; gap: 0.25em; }
+            .topbar-inner { padding: 0 0.6em 0 0.9em; gap: 0.3em; }
+            .brand { margin-right: 0; }
+
+            .lang-badge { min-width: 38px; height: 38px; font-size: 12px; padding: 0 0.5em; }
+            .level-icon { width: 38px; height: 38px; font-size: 12px; }
+
+            .history-btn { height: 38px; padding: 0 0.9em; font-size: 14px; }
+            .history-btn.auth-btn { font-size: 14px; padding: 0 0.9em; }
+            .settings-btn { width: 38px; height: 38px; }
+            .settings-btn svg { width: 20px; height: 20px; }
+
+            .timer { font-size: 13px; }
+            .timer b { font-size: 16px; min-width: 2.4em; }
+
+            .finish-btn { padding: 0.45em 1.1em; font-size: 15px; }
+
+            .progress-bar { width: 110px; height: 12px; }
+            .progress-count { font-size: 13px; }
+
+            .level-tab { min-width: 40px; height: 28px; font-size: 13px; }
+        }
+
+        @media (max-width: 560px) {
+            .topbar-inner { padding: 0 0.5em 0 0.6em; gap: 0.25em; }
 
             .lang-badge { min-width: 34px; height: 34px; font-size: 11px; padding: 0 0.4em; }
             .level-icon { width: 34px; height: 34px; font-size: 11px; }
 
-            .history-btn { height: 34px; padding: 0 0.7em; font-size: 12px; }
-            .history-btn.auth-btn { font-size: 12px; padding: 0 0.7em; }
+            .history-btn { font-size: 12px; padding: 0 0.7em; height: 34px; }
             .settings-btn { width: 34px; height: 34px; }
             .settings-btn svg { width: 18px; height: 18px; }
 
-            .timer { font-size: 12px; }
+            .timer { font-size: 11px; }
             .timer b { font-size: 14px; min-width: 2.2em; }
 
-            .finish-btn { padding: 0.4em 0.9em; font-size: 13px; }
+            .center-slot { gap: 0.3em; }
+            .finish-btn { padding: 0.4em 0.8em; font-size: 13px; }
 
-            .progress-bar { width: 90px; height: 11px; }
+            .progress-bar { width: 80px; height: 11px; }
             .progress-count { font-size: 12px; }
-
-            .level-tab { min-width: 36px; height: 26px; font-size: 12px; }
-        }
-
-        @media (max-width: 560px) {
-            .topbar-inner { padding: 0 0.4em 0 0.5em; gap: 0.2em; }
-
-            .lang-badge { min-width: 30px; height: 30px; font-size: 10px; padding: 0 0.3em; }
-            .level-icon { width: 30px; height: 30px; font-size: 10px; }
-
-            .history-btn { font-size: 11px; padding: 0 0.55em; height: 30px; }
-            .history-btn.auth-btn { font-size: 11px; padding: 0 0.55em; height: 30px; }
-            .settings-btn { width: 30px; height: 30px; }
-            .settings-btn svg { width: 16px; height: 16px; }
-
-            .timer { font-size: 10px; }
-            .timer b { font-size: 12px; min-width: 2em; }
-
-            .finish-btn { padding: 0.35em 0.7em; font-size: 12px; }
-
-            .progress-bar { width: 70px; height: 10px; }
-            .progress-count { font-size: 11px; }
-            .progress-wrap { margin-left: 0.4em; gap: 0.3em; }
+            .progress-wrap { margin-left: 0.6em; gap: 0.4em; }
         }
 
         @media (max-width: 400px) {
-            .timer { font-size: 9px; }
-            .timer b { font-size: 11px; min-width: 1.8em; }
-            .history-btn { font-size: 10px; padding: 0 0.4em; height: 28px; }
-            .history-btn.auth-btn { font-size: 10px; padding: 0 0.4em; height: 28px; }
-            .settings-btn { width: 28px; height: 28px; }
-            .settings-btn svg { width: 14px; height: 14px; }
-            .lang-badge, .level-icon { min-width: 28px; height: 28px; font-size: 9px; }
+            .timer { font-size: 10px; }
+            .timer b { font-size: 13px; min-width: 2em; }
+            .history-btn { font-size: 11px; padding: 0 0.55em; height: 32px; }
+            .settings-btn { width: 32px; height: 32px; }
+            .settings-btn svg { width: 16px; height: 16px; }
         }
 
         .wrapper {
@@ -318,6 +316,7 @@
         }
         .view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 
+        /* ===== Главный экран ===== */
         .home-layout {
             display: flex;
             align-items: stretch;
@@ -326,7 +325,7 @@
             margin-left: 2em;
             margin-right: 2em;
             max-width: 960px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
         .levels-column {
             display: flex;
@@ -365,12 +364,12 @@
         .level-btn.disabled:active { transform: none; }
 
         .start-btn {
-            flex: 1 1 auto;
-            min-width: 220px;
+            flex: 1 1 0;
+            min-width: 0;
             border: none;
             border-radius: 8px;
             font-family: inherit;
-            font-size: 44px;
+            font-size: clamp(16px, 5vw, 44px);
             line-height: 1.1;
             font-weight: 700;
             color: #fff;
@@ -392,16 +391,19 @@
         .start-btn.disabled:hover { background: #4a4a4a; }
 
         @media (max-width: 900px) {
-            .home-layout { margin-left: 1em; margin-right: 1em; gap: 1em; }
-            .levels-column { width: 150px; }
+            .home-layout { margin-left: 1em; margin-right: 1em; gap: 0.8em; }
+            .levels-column { width: 130px; }
             .level-btn { height: 40px; font-size: 17px; }
-            .start-btn { font-size: 34px; min-width: 160px; }
         }
         @media (max-width: 640px) {
-            .home-layout { margin-left: 0.5em; margin-right: 0.5em; gap: 0.6em; }
-            .levels-column { width: 110px; gap: 0.3em; }
-            .level-btn { height: 34px; font-size: 14px; }
-            .start-btn { font-size: 22px; min-width: 100px; }
+            .home-layout { margin-left: 0.5em; margin-right: 0.5em; gap: 0.5em; }
+            .levels-column { width: 90px; gap: 0.3em; }
+            .level-btn { height: 34px; font-size: 13px; }
+        }
+        @media (max-width: 400px) {
+            .levels-column { width: 70px; }
+            .level-btn { height: 30px; font-size: 12px; }
+            .start-btn { padding: 0.4em 0.5em; font-size: clamp(13px, 4.5vw, 18px); }
         }
 
         .settings-area {
@@ -514,6 +516,7 @@
             display: flex; align-items: center; justify-content: center;
             padding: 1em; background: #909090;
             border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;
+            touch-action: pan-y;
         }
         .train-main {
             display: flex; flex-direction: column; align-items: center;
@@ -542,6 +545,7 @@
             overflow-wrap: break-word;
             hyphens: auto;
             cursor: pointer;
+            touch-action: pan-y;
         }
         .face-square .fs-word {
             font-size: 1em;
@@ -621,6 +625,7 @@
             text-align: center;
             border: 2px solid #fff;
             border-radius: 6px;
+            touch-action: pan-y;
         }
         .check-input-one:focus { border-color: #2f8fd6; }
 
