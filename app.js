@@ -1,4 +1,5 @@
-/* Wordlist — логика приложения. */
+/* Wordlist — логика приложения.
+   Зависит от a1.js, a2.js, b1.js, b2.js (англ.) и ge_a1.js (нем.). */
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -14,7 +15,7 @@ let timerRemaining = TRAIN_SECONDS;
 let timerInterval  = null;
 
 /* Снимки попыток — только в памяти */
-let sessionSnapshots = [];   // [{ level, date, correct, close, wrong, total, items }]
+let sessionSnapshots = [];
 
 /* ===== Размер сессии ===== */
 const SESSION_SIZE_KEY = 'wordlist_size';
@@ -37,13 +38,17 @@ function sizeToSeconds(n) {
     return 60;
 }
 
+/* ===== Уровни =====
+   Порядок: английские A1, A2, B1, B2, C1, C2 — слева;
+   затем немецкие GE A1 — справа. */
 const levels = [
-    { code: 'A1', enabled: true  },
-    { code: 'A2', enabled: true  },
-    { code: 'B1', enabled: true  },
-    { code: 'B2', enabled: true  },
-    { code: 'C1', enabled: false },
-    { code: 'C2', enabled: false },
+    { code: 'A1',    enabled: true,  lang: 'en', label: 'A1' },
+    { code: 'A2',    enabled: true,  lang: 'en', label: 'A2' },
+    { code: 'B1',    enabled: true,  lang: 'en', label: 'B1' },
+    { code: 'B2',    enabled: true,  lang: 'en', label: 'B2' },
+    { code: 'C1',    enabled: false, lang: 'en', label: 'C1' },
+    { code: 'C2',    enabled: false, lang: 'en', label: 'C2' },
+    { code: 'GE_A1', enabled: true,  lang: 'ge', label: 'A1' },
 ];
 
 const levelColors = {
@@ -53,14 +58,33 @@ const levelColors = {
     B2: '#2ecc71',
     C1: '#e0e0e0',
     C2: '#e0e0e0',
+    GE_A1: '#e57373',
 };
 
 const BANKS = {
-    A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
-    A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
-    B1: typeof WORDS_B1 !== 'undefined' ? WORDS_B1 : null,
-    B2: typeof WORDS_B2 !== 'undefined' ? WORDS_B2 : null,
+    A1:    typeof WORDS_A1    !== 'undefined' ? WORDS_A1    : null,
+    A2:    typeof WORDS_A2    !== 'undefined' ? WORDS_A2    : null,
+    B1:    typeof WORDS_B1    !== 'undefined' ? WORDS_B1    : null,
+    B2:    typeof WORDS_B2    !== 'undefined' ? WORDS_B2    : null,
+    GE_A1: typeof WORDS_GE_A1 !== 'undefined' ? WORDS_GE_A1 : null,
 };
+
+/* Язык текущего уровня */
+function currentLang() {
+    const l = levels.find(x => x.code === currentLevel);
+    return l ? l.lang : 'en';
+}
+
+/* Короткое имя для иконки (без префикса GE) */
+function levelShortName(code) {
+    return code.startsWith('GE_') ? code.slice(3) : code;
+}
+
+/* Ярлык для шапки — GE_A1 → "GE1", остальные как есть */
+function levelIconLabel(code) {
+    if (code.startsWith('GE_')) return 'GE' + code.slice(3);
+    return code;
+}
 
 let sessionWords = [];
 let userAnswers  = [];
@@ -94,7 +118,6 @@ function loadBool(key, def) {
 function saveBool(key, on) {
     try { localStorage.setItem(key, on ? '1' : '0'); } catch (_) {}
 }
-
 function loadHints()  { return loadBool(HINTS_KEY, false); }
 function saveHints(v) { saveBool(HINTS_KEY, v); }
 function loadLength() { return loadBool(LENGTH_KEY, false); }
@@ -110,11 +133,40 @@ function shuffle(arr) {
     return a;
 }
 
-function normalize(s) {
-    return (s || '')
-        .toLowerCase()
-        .replace(/\b(to|the)\b/g, '')
-        .replace(/[^a-z]/g, '');
+/* Нормализация:
+   - если GE-уровень: умляуты и ß разворачиваются по правилам транслитерации,
+     затем сворачиваются oe→o, ae→a, ue→u, ss→ss;
+   - убираются служебные слова der/die/das/to/the (в начале);
+   - убирается всё кроме a-z;
+   - латиница нижнего регистра. */
+function normalize(s, lang) {
+    let v = (s || '');
+
+    if (lang === 'ge') {
+        // умляуты → ae/oe/ue, ß → ss
+        v = v
+            .replace(/ä/g, 'ae').replace(/Ä/g, 'ae')
+            .replace(/ö/g, 'oe').replace(/Ö/g, 'oe')
+            .replace(/ü/g, 'ue').replace(/Ü/g, 'ue')
+            .replace(/ß/g, 'ss');
+        v = v.toLowerCase();
+        // сворачиваем обратно в чистые гласные
+        v = v.replace(/ae/g, 'a')
+             .replace(/oe/g, 'o')
+             .replace(/ue/g, 'u');
+    } else {
+        v = v.toLowerCase();
+    }
+
+    // служебные слова
+    if (lang === 'ge') {
+        v = v.replace(/\b(der|die|das)\b/g, '');
+    } else {
+        v = v.replace(/\b(to|the)\b/g, '');
+    }
+
+    v = v.replace(/[^a-z]/g, '');
+    return v;
 }
 
 function levenshtein(a, b) {
@@ -138,9 +190,10 @@ function levenshtein(a, b) {
 }
 
 function evaluate(userAnswer, correctAnswer) {
+    const lang = currentLang();
     const cleaned = (userAnswer || '').replace(/\*/g, '');
-    const u = normalize(cleaned);
-    const c = normalize(correctAnswer);
+    const u = normalize(cleaned, lang);
+    const c = normalize(correctAnswer, lang);
     if (!u) return 'wrong';
     if (u === c) return 'correct';
     const dist = levenshtein(u, c);
@@ -153,12 +206,31 @@ function updateCheckCols() {
 }
 
 /* ===== Подсказка ===== */
+function hintPrefix(word) {
+    // Определяем служебный префикс: to / the / der / die / das
+    const w = word || '';
+    const lang = currentLang();
+    if (lang === 'ge') {
+        if (w.startsWith('der ')) return 'der ';
+        if (w.startsWith('die ')) return 'die ';
+        if (w.startsWith('das ')) return 'das ';
+    } else {
+        if (w.startsWith('to '))  return 'to ';
+        if (w.startsWith('the ')) return 'the ';
+    }
+    return '';
+}
+
 function buildHintVisible(correctAnswer) {
     if (!loadHints()) return '';
     const s = correctAnswer || '';
     if (!s) return '';
-    if (s.startsWith('to ') && s.length > 3)  return 'to ' + s[3];
-    if (s.startsWith('the ') && s.length > 4) return 'the ' + s[4];
+    const prefix = hintPrefix(s);
+    if (prefix) {
+        const rest = s.slice(prefix.length);
+        if (!rest) return prefix.trim();
+        return prefix + rest[0];
+    }
     return s[0] || '';
 }
 
@@ -290,7 +362,7 @@ function updateProgressBar() {
     progressCount.textContent = `${learned} / ${total}`;
 
     const color = levelColors[currentLevel] || '#e0e0e0';
-    homeLevelIcon.textContent = currentLevel;
+    homeLevelIcon.textContent = levelIconLabel(currentLevel);
     homeLevelIcon.dataset.level = currentLevel;
     homeLevelIcon.style.background = color;
 }
@@ -304,7 +376,8 @@ function renderLevelTabs() {
         const isActive = lvl.code === currentLevel;
         const cls = isActive ? 'level-tab active' : 'level-tab';
         const style = isActive ? `background:${color};` : '';
-        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
+        const title = lvl.lang === 'ge' ? 'GE ' + lvl.label : lvl.label;
+        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${title}</button>`;
     }).join('');
 
     levelsTabs.querySelectorAll('.level-tab').forEach(tab => {
@@ -322,7 +395,11 @@ function renderLevelTabs() {
 
 /* ===== Главный экран ===== */
 function renderHome() {
-    const levelsHtml = levels.map(lvl => {
+    // EN столбец
+    const enLevels = levels.filter(l => l.lang === 'en');
+    const geLevels = levels.filter(l => l.lang === 'ge');
+
+    const renderBtn = (lvl) => {
         const hasBank = !!BANKS[lvl.code];
         const isActive = lvl.code === currentLevel && hasBank;
 
@@ -337,15 +414,25 @@ function renderHome() {
         }
 
         const disabled = hasBank ? '' : 'disabled';
-        return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
-    }).join('');
+        return `<button class="${cls}" data-level="${lvl.code}" data-lang="${lvl.lang}" style="${style}" ${disabled}>${lvl.label}</button>`;
+    };
+
+    const enHtml = enLevels.map(renderBtn).join('');
+    const geHtml = geLevels.map(renderBtn).join('');
 
     const hasBank = !!BANKS[currentLevel];
     const startCls = hasBank ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
         <div class="home-layout">
-            <div class="levels-grid">${levelsHtml}</div>
+            <div class="levels-column">
+                <div class="levels-column-title">EN</div>
+                ${enHtml}
+            </div>
+            <div class="levels-column">
+                <div class="levels-column-title">GE</div>
+                ${geHtml}
+            </div>
             <button class="${startCls}" id="startBtn">
                 Начать тренировку
             </button>
@@ -441,13 +528,17 @@ function ensureThumbVisible() {
 
 /* ===== Экран тренировки ===== */
 function renderTrain() {
+    const w = sessionWords[currentPerson];
+    const hasExample = !!(w.ex && w.ex.trim());
+
     view.innerHTML = `
         <div class="train-screen">
             <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
             <div class="train-area">
                 <div class="train-main">
-                    <div class="face-square" id="faceSquare"></div>
+                    <div class="face-square" id="faceSquare">${w.ru}</div>
                     <div class="name-plate" id="namePlate"></div>
+                    ${hasExample ? '<div class="example-plate" id="examplePlate"></div>' : ''}
                     <div class="train-controls">
                         <button class="ctrl-btn" id="btnFirst">⏮</button>
                         <button class="ctrl-btn" id="btnPrev">◀</button>
@@ -466,20 +557,15 @@ function renderTrain() {
         updateTrainCard();
     });
 
-    const btnFirst = document.getElementById('btnFirst');
-    const btnPrev  = document.getElementById('btnPrev');
-    const btnNext  = document.getElementById('btnNext');
-    const faceSquare = document.getElementById('faceSquare');
-
-    btnFirst.addEventListener('click', () => {
+    document.getElementById('btnFirst').addEventListener('click', () => {
         currentPerson = 0;
         updateTrainCard();
     });
-    btnPrev.addEventListener('click', () => {
+    document.getElementById('btnPrev').addEventListener('click', () => {
         currentPerson = Math.max(0, currentPerson - 1);
         updateTrainCard();
     });
-    btnNext.addEventListener('click', () => {
+    document.getElementById('btnNext').addEventListener('click', () => {
         if (currentPerson >= sessionWords.length - 1) {
             goToCheck();
             return;
@@ -487,6 +573,8 @@ function renderTrain() {
         currentPerson++;
         updateTrainCard();
     });
+
+    const faceSquare = document.getElementById('faceSquare');
     faceSquare.addEventListener('click', () => {
         if (currentPerson < sessionWords.length - 1) {
             currentPerson++;
@@ -510,8 +598,14 @@ function updateTrainCard() {
     fs.textContent = w.ru;
     np.innerHTML = `${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span>`;
 
+    // Пример использования — только если он есть в базе
+    const ex = document.getElementById('examplePlate');
+    if (ex) {
+        ex.textContent = w.ex;
+    }
+
     fitFontSize(fs, 40, 14);
-    fitFontSize(np, 38, 12);
+    fitFontSize(np, 34, 12);
 
     updateThumbsActive();
     ensureThumbVisible();
@@ -796,7 +890,7 @@ function commitProgress() {
     saveProgress(currentLevel, prog);
 }
 
-/* ===== Результаты (после сессии) ===== */
+/* ===== Результаты ===== */
 function renderResults() {
     let correct = 0, close = 0, wrong = 0;
 
@@ -893,7 +987,6 @@ function renderHistory() {
         </div>
     `;
 
-    // Клик по строке — открыть результаты попытки (из памяти)
     view.querySelectorAll('.history-row').forEach(row => {
         row.addEventListener('click', () => {
             const idx = Number(row.dataset.index);
@@ -906,15 +999,7 @@ function renderHistory() {
 
 /* ===== Просмотр одной попытки из истории (из памяти) ===== */
 function showHistoryEntry(historyIndex) {
-    // Ищем снимок в sessionSnapshots по уровню и порядку совпадения с историей.
-    // История формируется сверху вниз — самые свежие сверху.
-    // sessionSnapshots тоже накапливается сверху вниз в обратном порядке.
-
     const history = loadHistory(currentLevel);
-
-    // Попробуем найти снимок по точному совпадению состава:
-    // у нас в снимках хранится полная запись с items, ищем тот, у которого
-    // дата совпадает с датой в истории.
     const rec = history[historyIndex];
     if (!rec) { renderHistory(); return; }
 
@@ -923,7 +1008,6 @@ function showHistoryEntry(historyIndex) {
     );
 
     if (!snap) {
-        // Снимка нет (например, страница перезагружена) — покажем только статистику
         const total = rec.total || 0;
         const pct = (n) => total ? Math.round(n / total * 100) : 0;
         view.innerHTML = `
@@ -941,12 +1025,24 @@ function showHistoryEntry(historyIndex) {
         return;
     }
 
-    // Есть снимок — рендерим как обычные результаты
     let correct = 0, close = 0, wrong = 0;
 
     const rows = snap.items.map(it => {
         const userAns = it.userAnswer || '';
-        const verdict = evaluate(userAns, it.en);
+        // В момент снимка активный был snap.level — но в evaluate мы используем currentLang().
+        // Для простоты — определяем язык по rec.level.
+        const lang = snap.level.startsWith('GE_') ? 'ge' : 'en';
+        const cleaned = userAns.replace(/\*/g, '');
+        const u = normalize(cleaned, lang);
+        const c = normalize(it.en, lang);
+        let verdict;
+        if (!u) verdict = 'wrong';
+        else if (u === c) verdict = 'correct';
+        else {
+            const dist = levenshtein(u, c);
+            const allowed = Math.max(1, Math.round(c.length * 0.1));
+            verdict = dist <= allowed ? 'close' : 'wrong';
+        }
 
         if (verdict === 'correct') correct++;
         else if (verdict === 'close') close++;
@@ -1147,10 +1243,8 @@ finishBtn.addEventListener('click', () => {
             hour: '2-digit', minute: '2-digit'
         });
 
-        // Записываем в историю (без деталей)
         pushHistory(currentLevel, { date: dateStr, correct, close, wrong, total });
 
-        // Снимок с деталями — только в памяти
         sessionSnapshots.unshift({
             level: currentLevel,
             date: dateStr,
