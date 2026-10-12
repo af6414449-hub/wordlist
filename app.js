@@ -160,28 +160,25 @@ function storageLevelKey() {
     return currentLanguage.toUpperCase() + '_' + currentLevel;
 }
 
-function levelIconLabel() {
-    return langShort(currentLanguage) + ' ' + currentLevel;
-}
-
 let sessionWords = [];
 let userAnswers  = [];
 
-const view          = document.getElementById('view');
-const trainSlot     = document.getElementById('trainSlot');
-const finishBtn     = document.getElementById('finishBtn');
-const timerWrap     = document.getElementById('timerWrap');
-const timerValue    = document.getElementById('timerValue');
-const historyBtn    = document.getElementById('historyBtn');
-const loginBtn      = document.getElementById('loginBtn');
-const signupBtn     = document.getElementById('signupBtn');
-const settingsBtn   = document.getElementById('settingsBtn');
-const topbarInner   = document.querySelector('.topbar-inner');
-const progressWrap  = document.getElementById('progressWrap');
-const progressFill  = document.getElementById('progressFill');
-const progressCount = document.getElementById('progressCount');
-const homeLevelIcon = document.getElementById('homeLevelIcon');
-const levelsTabs    = document.getElementById('levelsTabs');
+const view           = document.getElementById('view');
+const trainSlot      = document.getElementById('trainSlot');
+const finishBtn      = document.getElementById('finishBtn');
+const timerWrap      = document.getElementById('timerWrap');
+const timerValue     = document.getElementById('timerValue');
+const historyBtn     = document.getElementById('historyBtn');
+const loginBtn       = document.getElementById('loginBtn');
+const signupBtn      = document.getElementById('signupBtn');
+const settingsBtn    = document.getElementById('settingsBtn');
+const topbarInner    = document.querySelector('.topbar-inner');
+const progressWrap   = document.getElementById('progressWrap');
+const progressFill   = document.getElementById('progressFill');
+const progressCount  = document.getElementById('progressCount');
+const homeLangBadge  = document.getElementById('homeLangBadge');
+const homeLevelIcon  = document.getElementById('homeLevelIcon');
+const levelsTabs     = document.getElementById('levelsTabs');
 
 /* ===== Модальное окно авторизации ===== */
 const authOverlay  = document.getElementById('authOverlay');
@@ -519,7 +516,7 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Прогресс-бар + иконка уровня ===== */
+/* ===== Прогресс-бар + плашки языка и уровня ===== */
 async function updateProgressBar() {
     const bank = getBank(currentLevel) || [];
     const total = bank.length;
@@ -531,8 +528,12 @@ async function updateProgressBar() {
     progressFill.style.width = pct + '%';
     progressCount.textContent = `${learned} / ${total}`;
 
+    // Язык — отдельная плашка
+    if (homeLangBadge) homeLangBadge.textContent = langShort(currentLanguage);
+
+    // Уровень — своя цветная плашка
     const color = levelColors[currentLevel] || '#e0e0e0';
-    homeLevelIcon.textContent = levelIconLabel();
+    homeLevelIcon.textContent = currentLevel;
     homeLevelIcon.dataset.level = currentLevel;
     homeLevelIcon.style.background = color;
 }
