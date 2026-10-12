@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://stojqwedqwijwjmneacy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0b2pxd2VkcXdpandqbW5lYWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4Mzc1MjMsImV4cCI6MjEwNzQxMzUyM30.i7x48BSVyHT2m9MRotbl2tLbpzxOLyU5ZPzSdj3tq44';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
@@ -21,6 +21,9 @@ let timerRemaining = 0;
 let timerInterval  = null;
 
 let sessionSnapshots = [];
+
+/* ===== Пользователь ===== */
+let currentUser = null;
 
 /* ===== Язык ===== */
 const LANG_KEY = 'wordlist_lang';
@@ -316,10 +319,25 @@ function hintLockLength(correctAnswer) {
     return buildHintVisible(correctAnswer).length;
 }
 
-/* ===== Прогресс ===== */
+/* ===== Прогресс (Supabase + localStorage) ===== */
 function progressKey() { return 'wordlist_progress_' + storageLevelKey(); }
 
-function loadProgress() {
+async function loadProgress() {
+    if (currentUser) {
+        const { data, error } = await sb
+            .from('progress')
+            .select('learned')
+            .eq('user_id', currentUser.id)
+            .eq('lang', currentLanguage)
+            .eq('level', currentLevel)
+            .maybeSingle();
+        if (!error && data) {
+            return { learned: Array.isArray(data.learned) ? data.learned : [] };
+        }
+        if (error) console.warn('loadProgress error:', error.message);
+        return { learned: [] };
+    }
+    // fallback: localStorage
     try {
         const raw = localStorage.getItem(progressKey());
         if (!raw) return { learned: [] };
@@ -329,17 +347,59 @@ function loadProgress() {
         return { learned: [] };
     }
 }
-function saveProgress(progress) {
+
+async function saveProgress(progress) {
+    if (currentUser) {
+        const { error } = await sb.from('progress').upsert({
+            user_id: currentUser.id,
+            lang: currentLanguage,
+            level: currentLevel,
+            learned: progress.learned,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,lang,level' });
+        if (error) console.warn('saveProgress error:', error.message);
+    }
+    // всегда дублируем в localStorage как кэш
     try { localStorage.setItem(progressKey(), JSON.stringify(progress)); } catch (_) {}
 }
-function resetProgress() {
+
+async function resetProgress() {
+    if (currentUser) {
+        const { error } = await sb.from('progress')
+            .delete()
+            .eq('user_id', currentUser.id)
+            .eq('lang', currentLanguage)
+            .eq('level', currentLevel);
+        if (error) console.warn('resetProgress error:', error.message);
+    }
     try { localStorage.removeItem(progressKey()); } catch (_) {}
 }
 
 /* ===== История ===== */
 function historyKey() { return 'wordlist_history_' + storageLevelKey(); }
 
-function loadHistory() {
+async function loadHistory() {
+    if (currentUser) {
+        const { data, error } = await sb
+            .from('history')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .eq('lang', currentLanguage)
+            .eq('level', currentLevel)
+            .order('created_at', { ascending: false })
+            .limit(HISTORY_MAX);
+        if (!error && Array.isArray(data)) {
+            return data.map(r => ({
+                date: r.date,
+                correct: r.correct,
+                close: r.close,
+                wrong: r.wrong,
+                total: r.total
+            }));
+        }
+        if (error) console.warn('loadHistory error:', error.message);
+        return [];
+    }
     try {
         const raw = localStorage.getItem(historyKey());
         if (!raw) return [];
@@ -349,15 +409,28 @@ function loadHistory() {
         return [];
     }
 }
-function saveHistory(list) {
+
+async function pushHistory(entry) {
+    if (currentUser) {
+        const { error } = await sb.from('history').insert({
+            user_id: currentUser.id,
+            lang: currentLanguage,
+            level: currentLevel,
+            date: entry.date,
+            correct: entry.correct,
+            close: entry.close,
+            wrong: entry.wrong,
+            total: entry.total
+        });
+        if (error) console.warn('pushHistory error:', error.message);
+    }
+    // кэш в localStorage
     try {
+        const raw = localStorage.getItem(historyKey());
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift(entry);
         localStorage.setItem(historyKey(), JSON.stringify(list.slice(0, HISTORY_MAX)));
     } catch (_) {}
-}
-function pushHistory(entry) {
-    const list = loadHistory();
-    list.unshift(entry);
-    saveHistory(list.slice(0, HISTORY_MAX));
 }
 
 /* ===== Шапка ===== */
@@ -427,10 +500,10 @@ function stopTimer() {
 }
 
 /* ===== Прогресс-бар + иконка уровня ===== */
-function updateProgressBar() {
+async function updateProgressBar() {
     const bank = getBank(currentLevel) || [];
     const total = bank.length;
-    const prog = loadProgress();
+    const prog = await loadProgress();
     const learned = prog.learned.length;
 
     const pct = total ? Math.round(learned / total * 100) : 0;
@@ -457,12 +530,12 @@ function renderLevelTabs() {
     }).join('');
 
     levelsTabs.querySelectorAll('.level-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
+        tab.addEventListener('click', async () => {
             const lvl = tab.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
             renderLevelTabs();
-            updateProgressBar();
+            await updateProgressBar();
             if (screen === 'history') renderHistory();
             if (screen === 'history-entry') { screen = 'history'; renderHistory(); }
         });
@@ -507,13 +580,13 @@ function renderHome() {
     `;
 
     view.querySelectorAll('.level-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             if (btn.disabled) return;
             const lvl = btn.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
             renderHome();
-            updateProgressBar();
+            await updateProgressBar();
         });
     });
 
@@ -526,10 +599,11 @@ function renderHome() {
     });
 
     updateHeader();
+    updateProgressBar();
 }
 
 /* ===== Старт сессии ===== */
-function startSession() {
+async function startSession() {
     const bank = getBank(currentLevel);
     if (!bank || !bank.length) {
         alert('База для уровня ' + currentLevel + ' на этом языке ещё не подключена.');
@@ -538,12 +612,12 @@ function startSession() {
 
     const size = sessionSize;
 
-    const prog = loadProgress();
+    const prog = await loadProgress();
     const learnedSet = new Set(prog.learned);
 
     let fresh = bank.filter(w => !learnedSet.has(w.en));
     if (fresh.length < size) {
-        resetProgress();
+        await resetProgress();
         fresh = bank.slice();
     }
 
@@ -869,13 +943,12 @@ function renderCheckOne() {
     ensureThumbVisible();
 }
 
-/* Сохранить текущее значение большого поля в userAnswers */
 function saveOneInput() {
     const inp = document.getElementById('oneInput');
     if (inp) userAnswers[currentPerson] = inp.value;
 }
 
-/* ===== Режим подсказки (общий для сетки и одиночного) ===== */
+/* ===== Режим подсказки ===== */
 function setupHintInput(inp) {
     const idx = Number(inp.dataset.index);
     const correct = sessionWords[idx].en;
@@ -1044,8 +1117,8 @@ function updateCheckHighlight() {
 }
 
 /* ===== Прогресс после проверки ===== */
-function commitProgress() {
-    const prog = loadProgress();
+async function commitProgress() {
+    const prog = await loadProgress();
     const learnedSet = new Set(prog.learned);
 
     sessionWords.forEach((item, i) => {
@@ -1054,7 +1127,7 @@ function commitProgress() {
     });
 
     prog.learned = Array.from(learnedSet);
-    saveProgress(prog);
+    await saveProgress(prog);
 }
 
 /* ===== Результаты ===== */
@@ -1111,10 +1184,10 @@ function renderResults() {
 }
 
 /* ===== История ===== */
-function renderHistory() {
+async function renderHistory() {
     renderLevelTabs();
 
-    const history = loadHistory();
+    const history = await loadHistory();
 
     let body = '';
     if (!history.length) {
@@ -1256,6 +1329,83 @@ function showHistoryEntry(historyIndex) {
     updateHeader();
 }
 
+/* ===== Аутентификация ===== */
+async function initAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    currentUser = session?.user || null;
+
+    sb.auth.onAuthStateChange((_event, session) => {
+        currentUser = session?.user || null;
+        if (screen === 'home') renderHome();
+    });
+}
+
+async function signUp(email, password) {
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { alert('Ошибка регистрации: ' + error.message); return; }
+    if (data.user && !data.session) {
+        alert('Регистрация успешна! Проверьте почту для подтверждения.');
+    } else {
+        alert('Вы вошли!');
+    }
+}
+
+async function signIn(email, password) {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { alert('Ошибка входа: ' + error.message); return; }
+}
+
+async function signOut() {
+    await sb.auth.signOut();
+    currentUser = null;
+    renderHome();
+}
+
+function renderAuthRow() {
+    const row = document.getElementById('rowAuth');
+    if (!row) return;
+
+    if (currentUser) {
+        row.innerHTML = `
+            <span>Аккаунт</span>
+            <span style="margin-left:auto;font-size:13px;color:#555;max-width:140px;overflow:hidden;text-overflow:ellipsis;">${currentUser.email}</span>
+            <button class="size-btn" id="logoutBtn" style="margin-left:0.5em">Выйти</button>
+        `;
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            signOut();
+            renderSettings();
+        });
+    } else {
+        row.innerHTML = `
+            <span>Аккаунт</span>
+            <button class="size-btn" id="loginBtn">Войти</button>
+        `;
+        document.getElementById('loginBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showAuthPrompt();
+        });
+    }
+}
+
+function showAuthPrompt() {
+    // Простой prompt вместо сложной формы
+    const choice = prompt('Выберите:\n1 — Вход\n2 — Регистрация\n\nВведите 1 или 2:');
+    if (choice === '1') {
+        const email = prompt('Email:');
+        if (!email) return;
+        const password = prompt('Пароль:');
+        if (!password) return;
+        signIn(email, password);
+    } else if (choice === '2') {
+        const email = prompt('Email:');
+        if (!email) return;
+        const password = prompt('Пароль (минимум 6 символов):');
+        if (!password) return;
+        signUp(email, password);
+    }
+}
+
 /* ===== Настройки ===== */
 function renderSettings() {
     const hintsOn  = loadHints();
@@ -1264,6 +1414,10 @@ function renderSettings() {
     view.innerHTML = `
         <div class="settings-area">
             <h1 class="settings-title">Настройки</h1>
+
+            <div class="settings-row" id="rowAuth">
+                <span>Аккаунт</span>
+            </div>
 
             <div class="settings-row" id="rowLang">
                 <span>Язык</span>
@@ -1302,6 +1456,8 @@ function renderSettings() {
             </div>
         </div>
     `;
+
+    renderAuthRow();
 
     /* Язык */
     const switchLang = () => {
@@ -1441,7 +1597,7 @@ settingsBtn.addEventListener('click', () => {
 });
 
 /* ===== Завершить / Продолжить ===== */
-finishBtn.addEventListener('click', () => {
+finishBtn.addEventListener('click', async () => {
     if (screen === 'train') { goToCheck(); return; }
 
     if (screen === 'check' && checkPhase === 'input') {
@@ -1475,7 +1631,7 @@ finishBtn.addEventListener('click', () => {
             return;
         }
 
-        commitProgress();
+        await commitProgress();
 
         const now = new Date();
         const dateStr = now.toLocaleString('ru-RU', {
@@ -1483,7 +1639,7 @@ finishBtn.addEventListener('click', () => {
             hour: '2-digit', minute: '2-digit'
         });
 
-        pushHistory({ date: dateStr, correct, close, wrong, total });
+        await pushHistory({ date: dateStr, correct, close, wrong, total });
 
         sessionSnapshots.unshift({
             lang: currentLanguage,
@@ -1512,7 +1668,8 @@ finishBtn.addEventListener('click', () => {
 document.addEventListener('keydown', handleTrainKeys);
 
 /* ===== Старт ===== */
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
+    await initAuth();
     renderHome();
 });
