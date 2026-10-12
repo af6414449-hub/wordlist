@@ -49,7 +49,25 @@ function langShort(code) {
     return code.toUpperCase();
 }
 
-/* ===== Размер сессии (20 / 40 / 60) ===== */
+/* ===== Режим проверки: 'all' | 'one' ===== */
+const CHECK_MODE_KEY = 'wordlist_check_mode';
+function loadCheckMode() {
+    try {
+        const v = localStorage.getItem(CHECK_MODE_KEY);
+        if (v === 'all' || v === 'one') return v;
+    } catch (_) {}
+    return 'all';
+}
+function saveCheckMode(v) {
+    try { localStorage.setItem(CHECK_MODE_KEY, v); } catch (_) {}
+}
+let checkMode = loadCheckMode();
+
+function checkModeLabel(m) {
+    return m === 'one' ? 'По одной' : 'Все';
+}
+
+/* ===== Размер сессии ===== */
 const SESSION_SIZE_KEY = 'wordlist_size';
 function loadSessionSize() {
     try {
@@ -63,7 +81,7 @@ function saveSessionSize(v) {
 }
 let sessionSize = loadSessionSize();
 
-/* ===== Время на запоминание (60 / 120 / 180 / 0 = без ограничений) ===== */
+/* ===== Время на запоминание ===== */
 const SESSION_TIME_KEY = 'wordlist_time';
 function loadSessionTime() {
     try {
@@ -85,7 +103,7 @@ function timeLabel(sec) {
     return sec + 'с';
 }
 
-/* ===== Уровни (без языкового префикса) ===== */
+/* ===== Уровни ===== */
 const levels = [
     { code: 'A1', enabled: true  },
     { code: 'A2', enabled: true  },
@@ -104,7 +122,6 @@ const levelColors = {
     C2: '#e0e0e0',
 };
 
-/* Банки по языкам: BANKS[lang][level] */
 const BANKS = {
     en: {
         A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
@@ -129,7 +146,6 @@ function getBank(level) {
     return (l && l[level]) ? l[level] : null;
 }
 
-/* Ключ уровня для localStorage: "EN_A1", "DE_A1", "TR_B2" */
 function storageLevelKey() {
     return currentLanguage.toUpperCase() + '_' + currentLevel;
 }
@@ -185,7 +201,6 @@ function shuffle(arr) {
     return a;
 }
 
-/* Нормализация с учётом языка */
 function normalize(s, lang) {
     let v = (s || '');
 
@@ -201,7 +216,6 @@ function normalize(s, lang) {
              .replace(/ue/g, 'u');
         v = v.replace(/\b(der|die|das)\b/g, '');
     } else if (lang === 'tr') {
-        // Турецкие буквы → латиница
         v = v
             .replace(/ç/g, 'c').replace(/Ç/g, 'c')
             .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
@@ -262,7 +276,7 @@ function hintPrefix(word) {
         if (w.startsWith('die ')) return 'die ';
         if (w.startsWith('das ')) return 'das ';
     } else if (currentLanguage === 'tr') {
-        // в турецком артиклей нет
+        // нет артиклей
     } else {
         if (w.startsWith('to '))  return 'to ';
         if (w.startsWith('the ')) return 'the ';
@@ -451,7 +465,6 @@ function renderLevelTabs() {
 
 /* ===== Главный экран ===== */
 function renderHome() {
-    // Если текущий уровень недоступен для текущего языка — переключаемся на первый доступный
     if (!hasBank(currentLevel)) {
         const first = levels.find(l => l.enabled && hasBank(l.code));
         if (first) currentLevel = first.code;
@@ -691,8 +704,18 @@ function goToCheck() {
     renderCheck();
 }
 
-/* ===== Экран проверки ===== */
+/* ===== Экран проверки: разводка all/one ===== */
 function renderCheck() {
+    if (checkMode === 'one') {
+        renderCheckOne();
+    } else {
+        renderCheckAll();
+    }
+    updateHeader();
+}
+
+/* ---------- Режим "Все" (сетка) ---------- */
+function renderCheckAll() {
     const hintsOn = loadHints();
     const lengthOn = loadLength();
 
@@ -754,11 +777,228 @@ function renderCheck() {
             }
         });
     }
-
-    updateHeader();
 }
 
-/* ===== Режим подсказки ===== */
+/* ---------- Режим "По одной" (карточка как на тренировке) ---------- */
+function renderCheckOne() {
+    const item = sessionWords[currentPerson];
+    const answer = userAnswers[currentPerson] || '';
+
+    // Определяем цвет поля ввода в фазе результата
+    let inputCls = 'check-input check-input-one';
+    if (checkPhase === 'result') {
+        inputCls += ' ' + evaluate(answer, item.en);
+    }
+
+    const disabled = (checkPhase === 'result') ? 'disabled' : '';
+    const hintMode = (loadHints() || loadLength()) && checkPhase === 'input';
+
+    view.innerHTML = `
+        <div class="train-screen">
+            <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
+            <div class="train-area">
+                <div class="train-main">
+                    <div class="face-square" id="faceSquare"><span class="fs-word">${item.ru}</span></div>
+                    <div class="name-plate" id="namePlate"></div>
+                    <input
+                        class="${inputCls}"
+                        id="oneInput"
+                        type="text"
+                        value="${answer.replace(/"/g, '&quot;')}"
+                        data-index="${currentPerson}"
+                        data-hint="${hintMode ? '1' : '0'}"
+                        ${disabled}
+                    >
+                    <div class="train-controls">
+                        <button class="ctrl-btn" id="btnFirst">⏮</button>
+                        <button class="ctrl-btn" id="btnPrev">◀</button>
+                        <button class="ctrl-btn" id="btnNext">▶</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Подпись под квадратом — пустая (или можно ничего не писать)
+    const np = document.getElementById('namePlate');
+    if (np) np.textContent = '';
+
+    // Лента миниатюр сверху — те же, что на тренировке
+    const thumbsBar = document.getElementById('thumbsBar');
+    thumbsBar.addEventListener('click', (e) => {
+        const t = e.target.closest('.thumb');
+        if (!t) return;
+        // Сохраняем текущий ввод перед переключением
+        saveOneInput();
+        currentPerson = Number(t.dataset.index);
+        renderCheckOne();
+        updateHeader();
+    });
+
+    // Стрелки
+    document.getElementById('btnFirst').addEventListener('click', () => {
+        saveOneInput();
+        currentPerson = 0;
+        renderCheckOne();
+        updateHeader();
+    });
+    document.getElementById('btnPrev').addEventListener('click', () => {
+        saveOneInput();
+        currentPerson = Math.max(0, currentPerson - 1);
+        renderCheckOne();
+        updateHeader();
+    });
+    document.getElementById('btnNext').addEventListener('click', () => {
+        saveOneInput();
+        if (currentPerson >= sessionWords.length - 1) {
+            // На последней — не выходим, кнопка "Завершить" сверху
+            return;
+        }
+        currentPerson++;
+        renderCheckOne();
+        updateHeader();
+    });
+
+    // Поле ввода
+    const inp = document.getElementById('oneInput');
+    if (inp) {
+        inp.addEventListener('input', () => {
+            userAnswers[currentPerson] = inp.value;
+        });
+
+        if (checkPhase === 'input' && inp.dataset.hint === '1') {
+            setupHintInputOne(inp);
+        }
+
+        // Автофокус
+        try {
+            inp.focus({ preventScroll: true });
+        } catch (_) {
+            inp.focus();
+        }
+    }
+
+    ensureThumbVisible();
+}
+
+/* Сохранить текущее значение большого поля в userAnswers */
+function saveOneInput() {
+    const inp = document.getElementById('oneInput');
+    if (inp) userAnswers[currentPerson] = inp.value;
+}
+
+/* Подсказка для одиночного поля (упрощённая версия) */
+function setupHintInputOne(inp) {
+    const idx = Number(inp.dataset.index);
+    const correct = sessionWords[idx].en;
+    const maxLen = correct.length;
+    const lockLen = hintLockLength(correct);
+    const visiblePart = buildHintVisible(correct);
+    const withLength = loadLength();
+
+    // Начальная маска
+    if (!inp.value || inp.value.length < lockLen) {
+        inp.value = buildHintMask(correct);
+        userAnswers[idx] = inp.value;
+    }
+
+    const putCaret = () => {
+        try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
+    };
+
+    inp.addEventListener('input', () => {
+        userAnswers[idx] = inp.value;
+    });
+
+    putCaret();
+}
+
+/* ===== Экран проверки: обработчики клавиш ===== */
+function handleCheckKey(e) {
+    if (checkPhase !== 'input') return;
+    if (checkMode === 'one') return; // в одиночном режиме стрелки не мешают
+
+    let next = null;
+
+    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        next = currentPerson + 1;
+    } else if (e.key === 'ArrowLeft') {
+        next = currentPerson - 1;
+    } else if (e.key === 'ArrowDown') {
+        next = currentPerson + CHECK_COLS;
+    } else if (e.key === 'ArrowUp') {
+        next = currentPerson - CHECK_COLS;
+    } else {
+        return;
+    }
+
+    e.preventDefault();
+    if (next < 0 || next >= sessionWords.length) return;
+
+    currentPerson = next;
+    updateCheckHighlight();
+    focusCurrentInput(true);
+}
+
+function focusCurrentInput(scrollIfNeeded) {
+    if (checkMode === 'one') {
+        const inp = document.getElementById('oneInput');
+        if (inp) {
+            try { inp.focus({ preventScroll: true }); } catch (_) {}
+        }
+        return;
+    }
+    const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
+    if (!el) return;
+
+    try {
+        el.focus({ preventScroll: true });
+    } catch (_) {
+        el.focus();
+    }
+
+    if (el.dataset.hint === '1') {
+        const lockLen = hintLockLength(sessionWords[currentPerson].en);
+        let userTyped = 0;
+        for (let i = lockLen; i < el.value.length; i++) {
+            if (el.value[i] !== '*') userTyped++;
+            else break;
+        }
+        const pos = lockLen + userTyped;
+        try { el.setSelectionRange(pos, pos); } catch (_) {}
+    } else {
+        const val = el.value;
+        try { el.setSelectionRange(val.length, val.length); } catch (_) {}
+    }
+
+    if (scrollIfNeeded) scrollCurrentInputIntoView();
+}
+
+function scrollCurrentInputIntoView() {
+    const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const vw = window.innerWidth  || document.documentElement.clientWidth;
+
+    const outTop    = rect.top    < 0;
+    const outBottom = rect.bottom > vh;
+    const outLeft   = rect.left   < 0;
+    const outRight  = rect.right  > vw;
+
+    if (outTop || outBottom || outLeft || outRight) {
+        el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
+    }
+}
+
+function updateCheckHighlight() {
+    view.querySelectorAll('.check-cell').forEach(cell => {
+        cell.classList.toggle('current', Number(cell.dataset.index) === currentPerson);
+    });
+}
+
+/* ===== Режим подсказки для сетки (как было) ===== */
 function setupHintInput(inp) {
     const idx = Number(inp.dataset.index);
     const correct = sessionWords[idx].en;
@@ -840,82 +1080,6 @@ function setupHintInput(inp) {
     inp.addEventListener('click', putCaretSoon);
 
     putCaretSoon();
-}
-
-function handleCheckKey(e) {
-    if (checkPhase !== 'input') return;
-
-    let next = null;
-
-    if (e.key === 'Enter' || e.key === 'ArrowRight') {
-        next = currentPerson + 1;
-    } else if (e.key === 'ArrowLeft') {
-        next = currentPerson - 1;
-    } else if (e.key === 'ArrowDown') {
-        next = currentPerson + CHECK_COLS;
-    } else if (e.key === 'ArrowUp') {
-        next = currentPerson - CHECK_COLS;
-    } else {
-        return;
-    }
-
-    e.preventDefault();
-    if (next < 0 || next >= sessionWords.length) return;
-
-    currentPerson = next;
-    updateCheckHighlight();
-    focusCurrentInput(true);
-}
-
-function focusCurrentInput(scrollIfNeeded) {
-    const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
-    if (!el) return;
-
-    try {
-        el.focus({ preventScroll: true });
-    } catch (_) {
-        el.focus();
-    }
-
-    if (el.dataset.hint === '1') {
-        const lockLen = hintLockLength(sessionWords[currentPerson].en);
-        let userTyped = 0;
-        for (let i = lockLen; i < el.value.length; i++) {
-            if (el.value[i] !== '*') userTyped++;
-            else break;
-        }
-        const pos = lockLen + userTyped;
-        try { el.setSelectionRange(pos, pos); } catch (_) {}
-    } else {
-        const val = el.value;
-        try { el.setSelectionRange(val.length, val.length); } catch (_) {}
-    }
-
-    if (scrollIfNeeded) scrollCurrentInputIntoView();
-}
-
-function scrollCurrentInputIntoView() {
-    const el = view.querySelector(`.check-input[data-index="${currentPerson}"]`);
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const vw = window.innerWidth  || document.documentElement.clientWidth;
-
-    const outTop    = rect.top    < 0;
-    const outBottom = rect.bottom > vh;
-    const outLeft   = rect.left   < 0;
-    const outRight  = rect.right  > vw;
-
-    if (outTop || outBottom || outLeft || outRight) {
-        el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
-    }
-}
-
-function updateCheckHighlight() {
-    view.querySelectorAll('.check-cell').forEach(cell => {
-        cell.classList.toggle('current', Number(cell.dataset.index) === currentPerson);
-    });
 }
 
 /* ===== Прогресс после проверки ===== */
@@ -1145,6 +1309,11 @@ function renderSettings() {
                 <button class="size-btn" id="langBtn">${langLabel(currentLanguage)}</button>
             </div>
 
+            <div class="settings-row" id="rowCheckMode">
+                <span>Режим проверки</span>
+                <button class="size-btn" id="checkModeBtn">${checkModeLabel(checkMode)}</button>
+            </div>
+
             <div class="settings-row" id="rowHints">
                 <label class="switch">
                     <input type="checkbox" id="hintsToggle" ${hintsOn ? 'checked' : ''}>
@@ -1186,6 +1355,21 @@ function renderSettings() {
     document.getElementById('langBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         switchLang();
+    });
+
+    /* Режим проверки */
+    const switchCheckMode = () => {
+        checkMode = (checkMode === 'all') ? 'one' : 'all';
+        saveCheckMode(checkMode);
+        renderSettings();
+    };
+    document.getElementById('rowCheckMode').addEventListener('click', (e) => {
+        if (e.target.closest('.size-btn')) return;
+        switchCheckMode();
+    });
+    document.getElementById('checkModeBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        switchCheckMode();
     });
 
     /* Первая буква */
@@ -1300,8 +1484,18 @@ finishBtn.addEventListener('click', () => {
     if (screen === 'train') { goToCheck(); return; }
 
     if (screen === 'check' && checkPhase === 'input') {
+        // Сохранить ввод в одиночном режиме
+        if (checkMode === 'one') saveOneInput();
+
         checkPhase = 'result';
-        renderCheck();
+
+        // Пересобрать экран в фазе результата
+        if (checkMode === 'one') {
+            renderCheckOne();
+        } else {
+            renderCheckAll();
+        }
+        updateHeader();
         return;
     }
 
