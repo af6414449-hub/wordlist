@@ -178,16 +178,45 @@ const progressFill   = document.getElementById('progressFill');
 const progressCount  = document.getElementById('progressCount');
 const homeLangBadge  = document.getElementById('homeLangBadge');
 const homeLevelIcon  = document.getElementById('homeLevelIcon');
-const levelsTabs     = document.getElementById('levelsTabs');
 
-/* ===== Клик по плашке языка ===== */
+/* ===== Обработчики шапки ===== */
+function inTrainingMode() {
+    return screen === 'train' || screen === 'check';
+}
+
+function refreshCurrentScreen() {
+    if (screen === 'home')          renderHome();
+    else if (screen === 'settings') renderSettings();
+    else if (screen === 'results')  renderResults();
+    else if (screen === 'history' || screen === 'history-entry') renderHistory();
+    updateHeader();
+}
+
+/* Клик по плашке языка — только вне тренировки */
 homeLangBadge.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (inTrainingMode()) return;
+
     currentLanguage = nextLang(currentLanguage);
     saveLang(currentLanguage);
-    if (screen === 'home') renderHome();
-    updateHeader();
+    refreshCurrentScreen();
+});
+
+/* Клик по плашке уровня — крутить по кругу только вне тренировки */
+homeLevelIcon.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inTrainingMode()) return;
+
+    const available = levels.filter(l => l.enabled && hasBank(l.code));
+    if (!available.length) return;
+
+    const curIdx = available.findIndex(l => l.code === currentLevel);
+    const next = available[(curIdx + 1) % available.length];
+    currentLevel = next.code;
+
+    refreshCurrentScreen();
 });
 
 /* ===== Модальное окно авторизации ===== */
@@ -480,7 +509,6 @@ function updateHeader() {
     timerWrap.style.display = showTimer ? '' : 'none';
 
     progressWrap.style.display = (screen === 'home') ? 'flex' : 'none';
-    levelsTabs.style.display   = (screen === 'history' || screen === 'history-entry') ? 'flex' : 'none';
 
     if (screen === 'home') updateProgressBar();
 
@@ -548,31 +576,6 @@ async function updateProgressBar() {
     homeLevelIcon.textContent = currentLevel;
     homeLevelIcon.dataset.level = currentLevel;
     homeLevelIcon.style.background = color;
-}
-
-/* ===== Кнопки уровней в шапке истории ===== */
-function renderLevelTabs() {
-    const enabled = levels.filter(l => l.enabled && hasBank(l.code));
-
-    levelsTabs.innerHTML = enabled.map(lvl => {
-        const color = levelColors[lvl.code] || '#e0e0e0';
-        const isActive = lvl.code === currentLevel;
-        const cls = isActive ? 'level-tab active' : 'level-tab';
-        const style = isActive ? `background:${color};` : '';
-        return `<button class="${cls}" data-level="${lvl.code}" style="${style}">${lvl.code}</button>`;
-    }).join('');
-
-    levelsTabs.querySelectorAll('.level-tab').forEach(tab => {
-        tab.addEventListener('click', async () => {
-            const lvl = tab.dataset.level;
-            if (lvl === currentLevel) return;
-            currentLevel = lvl;
-            renderLevelTabs();
-            await updateProgressBar();
-            if (screen === 'history') renderHistory();
-            if (screen === 'history-entry') { screen = 'history'; renderHistory(); }
-        });
-    });
 }
 
 /* ===== Главный экран ===== */
@@ -963,7 +966,6 @@ function renderCheckOne() {
             renderCheckOne();
             updateHeader();
         } else {
-            // Последняя карточка → сразу к результатам
             checkPhase = 'result';
             renderCheckOne();
             updateHeader();
@@ -1294,8 +1296,6 @@ function renderResults() {
 
 /* ===== История ===== */
 async function renderHistory() {
-    renderLevelTabs();
-
     const history = await loadHistory();
 
     let body = '';
