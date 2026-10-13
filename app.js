@@ -10,7 +10,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 /* ===== Состояние ===== */
 let currentLevel = 'A1';
 let screen = 'home';
-let checkPhase = 'input';
 let currentPerson = 0;
 
 const HISTORY_MAX = 20;
@@ -156,7 +155,6 @@ const AVAILABLE_BY_LANG = {
     tr: ['B2'],
 };
 
-/* Данные, уже загруженные в память: BANKS[lang][level] = массив или null */
 const BANKS = {
     en: { A1: null, A2: null, B1: null, B2: null },
     de: { A1: null },
@@ -168,25 +166,20 @@ const loadedBanks = {};
 function bankKey(lang, level) {
     return lang + '_' + level;
 }
-
 function bankFile(lang, level) {
     return BANK_FILES[bankKey(lang, level)] || null;
 }
-
 function hasBankInLang(lang, level) {
     return (AVAILABLE_BY_LANG[lang] || []).includes(level);
 }
-
 function hasBank(level) {
     return hasBankInLang(currentLanguage, level);
 }
-
 function getBank(level) {
     const l = BANKS[currentLanguage];
     return (l && l[level]) ? l[level] : null;
 }
 
-/* Загрузка скрипта с базой */
 function loadBank(lang, level) {
     return new Promise((resolve, reject) => {
         const key = bankKey(lang, level);
@@ -199,7 +192,6 @@ function loadBank(lang, level) {
         script.src = file;
         script.async = true;
         script.onload = () => {
-            // Раскладываем по BANKS
             if (lang === 'en') {
                 if (level === 'A1' && typeof WORDS_A1 !== 'undefined') BANKS.en.A1 = WORDS_A1;
                 if (level === 'A2' && typeof WORDS_A2 !== 'undefined') BANKS.en.A2 = WORDS_A2;
@@ -256,7 +248,6 @@ function updateHeaderBadges() {
 }
 
 async function refreshCurrentScreen() {
-    // Догрузить базу, если её ещё нет
     try {
         await loadBank(currentLanguage, currentLevel);
     } catch (e) {
@@ -627,7 +618,7 @@ function updateHeader() {
     if (screen === 'results') {
         finishBtn.textContent = 'Продолжить';
         finishBtn.classList.add('continue');
-    } else if (screen === 'check' && checkPhase === 'result') {
+    } else if (screen === 'check') {
         finishBtn.textContent = 'К результатам';
         finishBtn.classList.add('continue');
     } else {
@@ -754,7 +745,6 @@ async function startSession() {
     const counterEl = startBtn ? startBtn.querySelector('.start-btn-counter') : null;
     const originalLabel = labelEl ? labelEl.textContent : '';
 
-    // Индикатор загрузки
     if (labelEl) labelEl.textContent = 'Загрузка…';
     if (counterEl) counterEl.textContent = '';
 
@@ -796,10 +786,11 @@ async function startSession() {
 
 /* ===== Лента миниатюр ===== */
 function buildThumbsHTML() {
+    const showAnswers = (screen === 'train');
     return sessionWords.map((item, i) => `
         <div class="thumb${i === currentPerson ? ' active' : ''}" data-index="${i}">
             <div class="thumb-img">${item.ru}</div>
-            <div class="thumb-name">${item.en}</div>
+            ${showAnswers ? `<div class="thumb-name">${item.en}</div>` : ''}
         </div>
     `).join('');
 }
@@ -951,7 +942,6 @@ function goToCheck() {
     stopTimer();
     updateCheckCols();
     screen = 'check';
-    checkPhase = 'input';
     sessionWords = shuffle(sessionWords);
 
     userAnswers = sessionWords.map(item => buildHintMask(item.en));
@@ -979,13 +969,8 @@ function renderCheckAll() {
         const answer = userAnswers[i] || '';
         const cls = ['check-input'];
 
-        if (checkPhase === 'result') {
-            cls.push(evaluate(answer, item.en));
-        }
-
-        const disabled = (checkPhase === 'result') ? 'disabled' : '';
-        const current  = (i === currentPerson && checkPhase === 'input') ? ' current' : '';
-        const hintMode = (hintsOn || lengthOn) && checkPhase === 'input';
+        const current  = (i === currentPerson) ? ' current' : '';
+        const hintMode = (hintsOn || lengthOn);
 
         return `
             <div class="check-cell${current}" data-index="${i}">
@@ -996,7 +981,6 @@ function renderCheckAll() {
                     value="${answer.replace(/"/g, '&quot;')}"
                     data-index="${i}"
                     data-hint="${hintMode ? '1' : '0'}"
-                    ${disabled}
                 >
             </div>
         `;
@@ -1012,27 +996,25 @@ function renderCheckAll() {
         fitFontSize(el, 13, 8);
     });
 
-    if (checkPhase === 'input') {
-        view.querySelectorAll('.check-input').forEach(inp => {
-            inp.addEventListener('input', (e) => {
-                const idx = Number(e.target.dataset.index);
-                userAnswers[idx] = e.target.value;
-            });
-
-            inp.addEventListener('focus', (e) => {
-                const idx = Number(e.target.dataset.index);
-                if (idx === currentPerson) return;
-                currentPerson = idx;
-                updateCheckHighlight();
-            });
-
-            inp.addEventListener('keydown', handleCheckKey);
-
-            if (inp.dataset.hint === '1') {
-                setupHintInput(inp);
-            }
+    view.querySelectorAll('.check-input').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+            const idx = Number(e.target.dataset.index);
+            userAnswers[idx] = e.target.value;
         });
-    }
+
+        inp.addEventListener('focus', (e) => {
+            const idx = Number(e.target.dataset.index);
+            if (idx === currentPerson) return;
+            currentPerson = idx;
+            updateCheckHighlight();
+        });
+
+        inp.addEventListener('keydown', handleCheckKey);
+
+        if (inp.dataset.hint === '1') {
+            setupHintInput(inp);
+        }
+    });
 }
 
 /* ---------- Режим "По одной" (карточка) ---------- */
@@ -1040,13 +1022,8 @@ function renderCheckOne() {
     const item = sessionWords[currentPerson];
     const answer = userAnswers[currentPerson] || '';
 
-    let inputCls = 'check-input check-input-one';
-    if (checkPhase === 'result') {
-        inputCls += ' ' + evaluate(answer, item.en);
-    }
-
-    const disabled = (checkPhase === 'result') ? 'disabled' : '';
-    const hintMode = (loadHints() || loadLength()) && checkPhase === 'input';
+    const inputCls = 'check-input check-input-one';
+    const hintMode = (loadHints() || loadLength());
 
     view.innerHTML = `
         <div class="train-screen">
@@ -1061,7 +1038,6 @@ function renderCheckOne() {
                         value="${answer.replace(/"/g, '&quot;')}"
                         data-index="${currentPerson}"
                         data-hint="${hintMode ? '1' : '0'}"
-                        ${disabled}
                     >
                     <div class="train-controls">
                         <button class="ctrl-btn" id="btnFirst">⏮</button>
@@ -1103,15 +1079,13 @@ function renderCheckOne() {
             renderCheckOne();
             updateHeader();
         } else {
-            checkPhase = 'result';
-            renderCheckOne();
-            updateHeader();
+            finishSession();
         }
     });
 
     const inp = document.getElementById('oneInput');
     if (inp) {
-        if (checkPhase === 'input' && inp.dataset.hint === '1') {
+        if (inp.dataset.hint === '1') {
             setupHintInput(inp);
         } else {
             inp.addEventListener('input', () => {
@@ -1132,13 +1106,7 @@ function renderCheckOne() {
         }
     }
 
-    const fs = document.getElementById('faceSquare');
-    if (fs) {
-        fs.addEventListener('click', () => {
-            const w = sessionWords[currentPerson];
-            speakWord(w.en);
-        });
-    }
+    // Клик по квадрату в проверке больше ничего не делает — не подсказываем
 
     ensureThumbVisible();
 }
@@ -1233,7 +1201,7 @@ function setupHintInput(inp) {
 }
 
 function handleCheckKey(e) {
-    if (checkPhase !== 'input') return;
+    if (screen !== 'check') return;
     if (checkMode === 'one') return;
 
     let next = null;
@@ -1262,23 +1230,24 @@ function handleCheckKey(e) {
 function handleCheckOneKey(e) {
     if (screen !== 'check') return;
     if (checkMode !== 'one') return;
-    if (checkPhase !== 'input') return;
 
     const tag = (e.target && e.target.tagName) || '';
     const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable));
 
-    if (inInput && e.key === 'Enter') {
-        e.preventDefault();
+    const goNext = () => {
         saveOneInput();
         if (currentPerson < sessionWords.length - 1) {
             currentPerson++;
             renderCheckOne();
             updateHeader();
         } else {
-            checkPhase = 'result';
-            renderCheckOne();
-            updateHeader();
+            finishSession();
         }
+    };
+
+    if (inInput && e.key === 'Enter') {
+        e.preventDefault();
+        goNext();
         return;
     }
 
@@ -1286,16 +1255,7 @@ function handleCheckOneKey(e) {
 
     if (e.key === 'ArrowRight') {
         e.preventDefault();
-        saveOneInput();
-        if (currentPerson < sessionWords.length - 1) {
-            currentPerson++;
-            renderCheckOne();
-            updateHeader();
-        } else {
-            checkPhase = 'result';
-            renderCheckOne();
-            updateHeader();
-        }
+        goNext();
     } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         saveOneInput();
@@ -1377,6 +1337,52 @@ async function commitProgress() {
 
     prog.learned = Array.from(learnedSet);
     await saveProgress(prog);
+}
+
+/* ===== Завершение сессии — сразу к результатам ===== */
+async function finishSession() {
+    if (checkMode === 'one') saveOneInput();
+
+    let correct = 0, close = 0, wrong = 0;
+    sessionWords.forEach((item, i) => {
+        const v = evaluate(userAnswers[i] || '', item.en);
+        if (v === 'correct') correct++;
+        else if (v === 'close') close++;
+        else wrong++;
+    });
+
+    const total = sessionWords.length;
+
+    if (wrong === total) {
+        screen = 'results';
+        renderResults();
+        return;
+    }
+
+    await commitProgress();
+
+    const now = new Date();
+    const dateStr = now.toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+
+    await pushHistory({ date: dateStr, correct, close, wrong, total });
+
+    sessionSnapshots.unshift({
+        lang: currentLanguage,
+        level: currentLevel,
+        date: dateStr,
+        correct, close, wrong, total,
+        items: sessionWords.map((item, i) => ({
+            ru: item.ru,
+            en: item.en,
+            userAnswer: userAnswers[i] || ''
+        }))
+    });
+
+    screen = 'results';
+    renderResults();
 }
 
 /* ===== Результаты ===== */
@@ -1999,61 +2005,8 @@ settingsBtn.addEventListener('click', () => {
 finishBtn.addEventListener('click', async () => {
     if (screen === 'train') { goToCheck(); return; }
 
-    if (screen === 'check' && checkPhase === 'input') {
-        if (checkMode === 'one') saveOneInput();
-
-        checkPhase = 'result';
-
-        if (checkMode === 'one') {
-            renderCheckOne();
-        } else {
-            renderCheckAll();
-        }
-        updateHeader();
-        return;
-    }
-
-    if (screen === 'check' && checkPhase === 'result') {
-        let correct = 0, close = 0, wrong = 0;
-        sessionWords.forEach((item, i) => {
-            const v = evaluate(userAnswers[i] || '', item.en);
-            if (v === 'correct') correct++;
-            else if (v === 'close') close++;
-            else wrong++;
-        });
-
-        const total = sessionWords.length;
-
-        if (wrong === total) {
-            screen = 'results';
-            renderResults();
-            return;
-        }
-
-        await commitProgress();
-
-        const now = new Date();
-        const dateStr = now.toLocaleString('ru-RU', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        await pushHistory({ date: dateStr, correct, close, wrong, total });
-
-        sessionSnapshots.unshift({
-            lang: currentLanguage,
-            level: currentLevel,
-            date: dateStr,
-            correct, close, wrong, total,
-            items: sessionWords.map((item, i) => ({
-                ru: item.ru,
-                en: item.en,
-                userAnswer: userAnswers[i] || ''
-            }))
-        });
-
-        screen = 'results';
-        renderResults();
+    if (screen === 'check') {
+        await finishSession();
         return;
     }
 
@@ -2094,7 +2047,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
     await initAuth();
 
-    // Загружаем базу для текущего языка/уровня
     try {
         await loadBank(currentLanguage, currentLevel);
     } catch (e) {
