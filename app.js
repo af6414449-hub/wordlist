@@ -600,6 +600,12 @@ async function updateProgressBar() {
     const homeProgress = document.getElementById('homeProgress');
     if (homeProgress) homeProgress.textContent = `${learned} / ${total}`;
 
+    const bar = document.getElementById('startBtnProgress');
+    if (bar) {
+        const pct = total ? Math.round(learned / total * 100) : 0;
+        bar.style.width = pct + '%';
+    }
+
     updateHeaderBadges();
 }
 
@@ -637,6 +643,7 @@ function renderHome() {
             <div class="start-column">
                 <button class="${startCls}" id="startBtn">
                     Начать тренировку
+                    <span class="start-btn-progress" id="startBtnProgress" style="width:0%"></span>
                 </button>
                 <div class="home-progress" id="homeProgress">0 / 0</div>
             </div>
