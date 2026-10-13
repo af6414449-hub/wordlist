@@ -522,6 +522,25 @@ function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history' || screen === 'history-entry');
     settingsBtn.classList.toggle('active', screen === 'settings');
 
+    // На экране настроек кнопка настроек показывает иконку домика
+    if (screen === 'settings') {
+        settingsBtn.classList.add('home-mode');
+        settingsBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 12L12 3l9 9"/>
+                <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/>
+            </svg>
+        `;
+    } else {
+        settingsBtn.classList.remove('home-mode');
+        settingsBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+        `;
+    }
+
     if (currentUser) {
         historyBtn.style.display = '';
         loginBtn.style.display = 'none';
@@ -600,12 +619,6 @@ async function updateProgressBar() {
     const homeProgress = document.getElementById('homeProgress');
     if (homeProgress) homeProgress.textContent = `${learned} / ${total}`;
 
-    const bar = document.getElementById('startBtnProgress');
-    if (bar) {
-        const pct = total ? Math.round(learned / total * 100) : 0;
-        bar.style.width = pct + '%';
-    }
-
     updateHeaderBadges();
 }
 
@@ -642,10 +655,9 @@ function renderHome() {
             <div class="levels-column">${levelsHtml}</div>
             <div class="start-column">
                 <button class="${startCls}" id="startBtn">
-                    Начать тренировку
-                    <span class="start-btn-progress" id="startBtnProgress" style="width:0%"></span>
+                    <span class="start-btn-label">Начать тренировку</span>
+                    <span class="start-btn-counter" id="homeProgress">0 / 0</span>
                 </button>
-                <div class="home-progress" id="homeProgress">0 / 0</div>
             </div>
         </div>
     `;
@@ -1668,11 +1680,6 @@ function renderSettings() {
         <div class="settings-area">
             <h1 class="settings-title">Настройки</h1>
 
-            <div class="settings-row" id="rowLang">
-                <span>Язык</span>
-                <button class="size-btn" id="langBtn" style="margin-left:auto;background:${langColor(currentLanguage)};">${langLabel(currentLanguage)}</button>
-            </div>
-
             <div class="settings-row" id="rowCheckMode">
                 <span>Режим проверки</span>
                 <button class="size-btn" id="checkModeBtn">${checkModeLabel(checkMode)}</button>
@@ -1713,28 +1720,6 @@ function renderSettings() {
             </div>
         </div>
     `;
-
-    const switchLang = () => {
-        currentLanguage = nextLang(currentLanguage);
-        saveLang(currentLanguage);
-
-        if (!hasBank(currentLevel)) {
-            const available = levels.filter(l => l.enabled && hasBank(l.code));
-            if (available.length) currentLevel = available[0].code;
-        }
-
-        renderSettings();
-        updateProgressBar();
-        updateHeader();
-    };
-    document.getElementById('rowLang').addEventListener('click', (e) => {
-        if (e.target.closest('.size-btn')) return;
-        switchLang();
-    });
-    document.getElementById('langBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        switchLang();
-    });
 
     const switchCheckMode = () => {
         checkMode = (checkMode === 'all') ? 'one' : 'all';
