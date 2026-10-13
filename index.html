@@ -166,6 +166,8 @@
         }
         .settings-btn:hover { background: rgba(255,255,255,0.2); }
         .settings-btn.active { background: rgba(255,255,255,0.25); }
+        .settings-btn.home-mode { background: rgba(255,255,255,0.12); }
+        .settings-btn.home-mode:hover { background: rgba(255,255,255,0.2); }
         .settings-btn svg {
             width: 30px; height: 30px;
             display: block;
@@ -318,7 +320,6 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 0;
             position: relative;
         }
 
@@ -330,18 +331,19 @@
             border: none;
             border-radius: 8px;
             font-family: inherit;
-            font-size: clamp(20px, 6vw, 56px);
+            font-size: clamp(18px, 5vw, 42px);
             line-height: 1.1;
             font-weight: 700;
             color: #fff;
             background: #4a4a4a;
             cursor: pointer;
-            padding: 0.55em 0.85em;
+            padding: 0.5em 0.75em 0.9em;
             transition: transform 0.1s, background 0.15s;
             word-wrap: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
-            display: inline-flex;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
@@ -351,46 +353,40 @@
         .start-btn.disabled { opacity: 0.5; cursor: not-allowed; }
         .start-btn.disabled:hover { background: #4a4a4a; }
 
-        .start-btn-progress {
+        .start-btn-label {
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .start-btn-counter {
             position: absolute;
             left: 0;
-            bottom: 0;
-            height: 6px;
-            background: #7ab98a;
-            transition: width 0.4s ease;
+            right: 0;
+            bottom: 0.25em;
+            z-index: 1;
             pointer-events: none;
-            border-radius: 0 0 0 8px;
-        }
-
-        .home-progress {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-top: 0.6em;
-            color: #555;
-            font-size: 20px;
+            font-size: 0.42em;
             font-weight: 700;
+            letter-spacing: 0.04em;
+            color: rgba(255,255,255,0.85);
             font-variant-numeric: tabular-nums;
-            letter-spacing: 0.02em;
+            text-align: center;
         }
 
         @media (max-width: 900px) {
             .home-layout { margin-left: 1em; margin-right: 1em; gap: 0.8em; }
             .levels-column { width: 130px; }
             .level-btn { height: 40px; font-size: 17px; }
-            .home-progress { font-size: 18px; }
         }
         @media (max-width: 640px) {
             .home-layout { margin-left: 0.5em; margin-right: 0.5em; gap: 0.5em; }
             .levels-column { width: 90px; gap: 0.3em; }
             .level-btn { height: 34px; font-size: 13px; }
-            .home-progress { font-size: 16px; margin-top: 0.4em; }
         }
         @media (max-width: 400px) {
             .levels-column { width: 70px; }
             .level-btn { height: 30px; font-size: 12px; }
-            .start-btn { padding: 0.4em 0.5em; font-size: clamp(15px, 4.8vw, 20px); }
-            .home-progress { font-size: 14px; }
+            .start-btn { padding: 0.4em 0.5em 0.8em; font-size: clamp(14px, 4.5vw, 20px); }
         }
 
         .settings-area {
