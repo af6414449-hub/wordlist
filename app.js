@@ -1,5 +1,5 @@
 /* Wordlist — логика приложения.
-   Базы данных (data/a1.js и др.) подгружаются лениво. */
+   Базы данных подключаются обычными <script> в index.html. */
 
 /* ===== Supabase ===== */
 const SUPABASE_URL = 'https://stojqwedqwijwjmneacy.supabase.co';
@@ -139,38 +139,24 @@ const levelColors = {
     C2: '#e0e0e0',
 };
 
-/* ===== Ленивая загрузка баз ===== */
-const BANK_FILES = {
-    'en_A1': 'data/a1.js',
-    'en_A2': 'data/a2.js',
-    'en_B1': 'data/b1.js',
-    'en_B2': 'data/b2.js',
-    'de_A1': 'data/ge_a1.js',
-    'tr_B2': 'data/tr_b2.js',
-};
-
-const AVAILABLE_BY_LANG = {
-    en: ['A1', 'A2', 'B1', 'B2'],
-    de: ['A1'],
-    tr: ['B2'],
-};
-
 const BANKS = {
-    en: { A1: null, A2: null, B1: null, B2: null },
-    de: { A1: null },
-    tr: { B2: null },
+    en: {
+        A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
+        A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
+        B1: typeof WORDS_B1 !== 'undefined' ? WORDS_B1 : null,
+        B2: typeof WORDS_B2 !== 'undefined' ? WORDS_B2 : null,
+    },
+    de: {
+        A1: typeof WORDS_GE_A1 !== 'undefined' ? WORDS_GE_A1 : null,
+    },
+    tr: {
+        B2: typeof WORDS_TR_B2 !== 'undefined' ? WORDS_TR_B2 : null,
+    },
 };
 
-const loadedBanks = {};
-
-function bankKey(lang, level) {
-    return lang + '_' + level;
-}
-function bankFile(lang, level) {
-    return BANK_FILES[bankKey(lang, level)] || null;
-}
 function hasBankInLang(lang, level) {
-    return (AVAILABLE_BY_LANG[lang] || []).includes(level);
+    const l = BANKS[lang];
+    return !!(l && l[level] && l[level].length);
 }
 function hasBank(level) {
     return hasBankInLang(currentLanguage, level);
@@ -178,36 +164,6 @@ function hasBank(level) {
 function getBank(level) {
     const l = BANKS[currentLanguage];
     return (l && l[level]) ? l[level] : null;
-}
-
-function loadBank(lang, level) {
-    return new Promise((resolve, reject) => {
-        const key = bankKey(lang, level);
-        const file = bankFile(lang, level);
-
-        if (!file) { resolve(null); return; }
-        if (loadedBanks[key]) { resolve(BANKS[lang][level]); return; }
-
-        const script = document.createElement('script');
-        script.src = file;
-        script.async = true;
-        script.onload = () => {
-            if (lang === 'en') {
-                if (level === 'A1' && typeof WORDS_A1 !== 'undefined') BANKS.en.A1 = WORDS_A1;
-                if (level === 'A2' && typeof WORDS_A2 !== 'undefined') BANKS.en.A2 = WORDS_A2;
-                if (level === 'B1' && typeof WORDS_B1 !== 'undefined') BANKS.en.B1 = WORDS_B1;
-                if (level === 'B2' && typeof WORDS_B2 !== 'undefined') BANKS.en.B2 = WORDS_B2;
-            } else if (lang === 'de') {
-                if (level === 'A1' && typeof WORDS_GE_A1 !== 'undefined') BANKS.de.A1 = WORDS_GE_A1;
-            } else if (lang === 'tr') {
-                if (level === 'B2' && typeof WORDS_TR_B2 !== 'undefined') BANKS.tr.B2 = WORDS_TR_B2;
-            }
-            loadedBanks[key] = true;
-            resolve(BANKS[lang][level]);
-        };
-        script.onerror = () => reject(new Error('Не удалось загрузить ' + file));
-        document.head.appendChild(script);
-    });
 }
 
 function storageLevelKey() {
@@ -247,13 +203,7 @@ function updateHeaderBadges() {
     }
 }
 
-async function refreshCurrentScreen() {
-    try {
-        await loadBank(currentLanguage, currentLevel);
-    } catch (e) {
-        console.warn(e);
-    }
-
+function refreshCurrentScreen() {
     updateHeaderBadges();
 
     if (screen === 'home')          renderHome();
@@ -265,7 +215,7 @@ async function refreshCurrentScreen() {
     updateHeader();
 }
 
-homeLangBadge.addEventListener('click', async (e) => {
+homeLangBadge.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (inTrainingMode()) return;
@@ -278,10 +228,10 @@ homeLangBadge.addEventListener('click', async (e) => {
         if (available.length) currentLevel = available[0].code;
     }
 
-    await refreshCurrentScreen();
+    refreshCurrentScreen();
 });
 
-homeLevelIcon.addEventListener('click', async (e) => {
+homeLevelIcon.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (inTrainingMode()) return;
@@ -293,7 +243,7 @@ homeLevelIcon.addEventListener('click', async (e) => {
     const next = available[(curIdx + 1) % available.length];
     currentLevel = next.code;
 
-    await refreshCurrentScreen();
+    refreshCurrentScreen();
 });
 
 /* ===== Модальное окно авторизации ===== */
@@ -669,7 +619,13 @@ async function updateProgressBar() {
     const learned = prog.learned.length;
 
     const homeProgress = document.getElementById('homeProgress');
-    if (homeProgress) homeProgress.textContent = `${learned} / ${total}`;
+    if (homeProgress) {
+        if (total === 0) {
+            homeProgress.textContent = '— / —';
+        } else {
+            homeProgress.textContent = `${learned} / ${total}`;
+        }
+    }
 
     updateHeaderBadges();
 }
@@ -708,32 +664,27 @@ function renderHome() {
             <div class="start-column">
                 <button class="${startCls}" id="startBtn">
                     <span class="start-btn-label">Начать тренировку</span>
-                    <span class="start-btn-counter" id="homeProgress">0 / 0</span>
+                    <span class="start-btn-counter" id="homeProgress">— / —</span>
                 </button>
             </div>
         </div>
     `;
 
-    // Мгновенно показываем разумное число, пока прогресс грузится
+    // Мгновенно показываем разумное число из банка
     const hp = document.getElementById('homeProgress');
     if (hp) {
         const bank = getBank(currentLevel) || [];
-        hp.textContent = `0 / ${bank.length}`;
+        if (bank.length) hp.textContent = `0 / ${bank.length}`;
     }
 
     view.querySelectorAll('.level-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', () => {
             if (btn.disabled) return;
             const lvl = btn.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
-            try {
-                await loadBank(currentLanguage, currentLevel);
-            } catch (e) {
-                console.warn(e);
-            }
             renderHome();
-            await updateProgressBar();
+            updateProgressBar();
         });
     });
 
@@ -747,24 +698,6 @@ function renderHome() {
 
 /* ===== Старт сессии ===== */
 async function startSession() {
-    const startBtn = document.getElementById('startBtn');
-    const labelEl  = startBtn ? startBtn.querySelector('.start-btn-label') : null;
-    const counterEl = startBtn ? startBtn.querySelector('.start-btn-counter') : null;
-    const originalLabel = labelEl ? labelEl.textContent : '';
-
-    if (labelEl) labelEl.textContent = 'Загрузка…';
-    if (counterEl) counterEl.textContent = '';
-
-    try {
-        await loadBank(currentLanguage, currentLevel);
-    } catch (e) {
-        if (labelEl) labelEl.textContent = originalLabel;
-        alert('Не удалось загрузить базу. Проверьте соединение.');
-        return;
-    }
-
-    if (labelEl) labelEl.textContent = originalLabel;
-
     const bank = getBank(currentLevel);
     if (!bank || !bank.length) {
         alert('База для уровня ' + currentLevel + ' на этом языке ещё не подключена.');
@@ -1594,7 +1527,13 @@ async function initAuth() {
     return new Promise((resolve) => {
         let resolved = false;
 
-        const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+        const finish = () => {
+            if (resolved) return;
+            resolved = true;
+            resolve();
+        };
+
+        sb.auth.onAuthStateChange((event, session) => {
             currentUser = session?.user || null;
 
             if (event === 'PASSWORD_RECOVERY') {
@@ -1614,24 +1553,20 @@ async function initAuth() {
             else if (screen === 'home') updateProgressBar();
             updateHeader();
 
-            // Резолвим только один раз — на первое событие с сессией
-            if (!resolved && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-                resolved = true;
-                resolve();
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                finish();
             }
         });
 
-        // Подстраховка: если INITIAL_SESSION не придёт в течение 2 сек,
-        // просто резолвим, чтобы приложение запустилось
-        setTimeout(() => {
-            if (!resolved) {
-                resolved = true;
-                sb.auth.getSession().then(({ data: { session } }) => {
-                    currentUser = session?.user || null;
-                    updateHeader();
-                    resolve();
-                }).catch(() => resolve());
-            }
+        // Подстраховка: если INITIAL_SESSION не придёт за 2 сек — берём сессию напрямую
+        setTimeout(async () => {
+            if (resolved) return;
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                currentUser = session?.user || null;
+                updateHeader();
+            } catch (_) {}
+            finish();
         }, 2000);
     });
 }
@@ -2069,17 +2004,7 @@ document.addEventListener('keydown', handleCheckOneKey);
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
-
-    // Загружаем базу для текущего языка/уровня
-    try {
-        await loadBank(currentLanguage, currentLevel);
-    } catch (e) {
-        console.warn(e);
-    }
-
-    // Инициализация авторизации (ждём INITIAL_SESSION или таймаут 2с)
     await initAuth();
-
     renderHome();
 
     if ('speechSynthesis' in window) {
