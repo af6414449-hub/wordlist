@@ -714,6 +714,13 @@ function renderHome() {
         </div>
     `;
 
+    // Мгновенно показываем разумное число, пока прогресс грузится
+    const hp = document.getElementById('homeProgress');
+    if (hp) {
+        const bank = getBank(currentLevel) || [];
+        hp.textContent = `0 / ${bank.length}`;
+    }
+
     view.querySelectorAll('.level-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             if (btn.disabled) return;
@@ -1096,17 +1103,17 @@ function renderCheckOne() {
         try { inp.focus({ preventScroll: true }); } catch (_) {}
 
         if (window.visualViewport && window.innerWidth <= 720) {
-            setTimeout(() => {
+            const fix = () => {
                 try {
                     inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
                 } catch (_) {
                     try { inp.scrollIntoView(); } catch (__) {}
                 }
-            }, 350);
+            };
+            setTimeout(fix, 350);
+            setTimeout(fix, 700);
         }
     }
-
-    // Клик по квадрату в проверке больше ничего не делает — не подсказываем
 
     ensureThumbVisible();
 }
@@ -1584,27 +1591,48 @@ async function showHistoryEntry(historyIndex) {
 
 /* ===== Аутентификация ===== */
 async function initAuth() {
-    const { data: { session } } = await sb.auth.getSession();
-    currentUser = session?.user || null;
+    return new Promise((resolve) => {
+        let resolved = false;
 
-    sb.auth.onAuthStateChange((event, session) => {
-        currentUser = session?.user || null;
+        const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+            currentUser = session?.user || null;
 
-        if (event === 'PASSWORD_RECOVERY') {
-            resetMode = 'update';
-            resetEmail.value = session?.user?.email || '';
-            resetEmail.disabled = true;
-            resetNewPassword.value = '';
-            resetNewPassword.style.display = '';
-            resetError.textContent = '';
-            resetHint.textContent = 'Задайте новый пароль для аккаунта.';
-            resetSubmit.textContent = 'Сохранить пароль';
-            resetOverlay.classList.add('open');
-            setTimeout(() => resetNewPassword.focus(), 50);
-        }
+            if (event === 'PASSWORD_RECOVERY') {
+                resetMode = 'update';
+                resetEmail.value = session?.user?.email || '';
+                resetEmail.disabled = true;
+                resetNewPassword.value = '';
+                resetNewPassword.style.display = '';
+                resetError.textContent = '';
+                resetHint.textContent = 'Задайте новый пароль для аккаунта.';
+                resetSubmit.textContent = 'Сохранить пароль';
+                resetOverlay.classList.add('open');
+                setTimeout(() => resetNewPassword.focus(), 50);
+            }
 
-        if (screen === 'settings') renderSettings();
-        updateHeader();
+            if (screen === 'settings') renderSettings();
+            else if (screen === 'home') updateProgressBar();
+            updateHeader();
+
+            // Резолвим только один раз — на первое событие с сессией
+            if (!resolved && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+                resolved = true;
+                resolve();
+            }
+        });
+
+        // Подстраховка: если INITIAL_SESSION не придёт в течение 2 сек,
+        // просто резолвим, чтобы приложение запустилось
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                sb.auth.getSession().then(({ data: { session } }) => {
+                    currentUser = session?.user || null;
+                    updateHeader();
+                    resolve();
+                }).catch(() => resolve());
+            }
+        }, 2000);
     });
 }
 
@@ -2020,21 +2048,17 @@ finishBtn.addEventListener('click', async () => {
 document.addEventListener('keydown', handleTrainKeys);
 document.addEventListener('keydown', handleCheckOneKey);
 
-/* ===== Мобильная клавиатура: поднять контент ===== */
+/* ===== Мобильная клавиатура: сжать сцену ===== */
 (function setupVisualViewport() {
     if (!window.visualViewport) return;
 
-    const root = document.documentElement;
     const stage = document.querySelector('.stage');
 
     const update = () => {
         const vv = window.visualViewport;
-        const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-        root.style.setProperty('--keyboard-offset', hidden + 'px');
-
-        stage.style.transform = vv.offsetTop
-            ? `translateX(-50%) translateY(${vv.offsetTop}px)`
-            : 'translateX(-50%)';
+        stage.style.height = vv.height + 'px';
+        stage.style.top = vv.offsetTop + 'px';
+        stage.style.transform = 'translateX(-50%)';
     };
 
     window.visualViewport.addEventListener('resize', update);
@@ -2045,13 +2069,16 @@ document.addEventListener('keydown', handleCheckOneKey);
 /* ===== Старт ===== */
 window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
-    await initAuth();
 
+    // Загружаем базу для текущего языка/уровня
     try {
         await loadBank(currentLanguage, currentLevel);
     } catch (e) {
         console.warn(e);
     }
+
+    // Инициализация авторизации (ждём INITIAL_SESSION или таймаут 2с)
+    await initAuth();
 
     renderHome();
 
