@@ -670,7 +670,6 @@ function renderHome() {
         </div>
     `;
 
-    // Мгновенно показываем разумное число из банка
     const hp = document.getElementById('homeProgress');
     if (hp) {
         const bank = getBank(currentLevel) || [];
@@ -968,7 +967,7 @@ function renderCheckOne() {
     view.innerHTML = `
         <div class="train-screen">
             <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
-            <div class="train-area">
+            <div class="train-area single-check">
                 <div class="train-main">
                     <div class="face-square" id="faceSquare"><span class="fs-word">${item.ru}</span></div>
                     <input
@@ -1558,7 +1557,6 @@ async function initAuth() {
             }
         });
 
-        // Подстраховка: если INITIAL_SESSION не придёт за 2 сек — берём сессию напрямую
         setTimeout(async () => {
             if (resolved) return;
             try {
