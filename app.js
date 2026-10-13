@@ -522,7 +522,10 @@ function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history' || screen === 'history-entry');
     settingsBtn.classList.toggle('active', screen === 'settings');
 
-    // На экране настроек кнопка настроек показывает иконку домика
+    // Кнопка «Результаты» на экране истории показывает «Назад»
+    historyBtn.textContent = (screen === 'history' || screen === 'history-entry') ? 'Назад' : 'Результаты';
+
+    // Кнопка настроек на экране настроек показывает иконку домика
     if (screen === 'settings') {
         settingsBtn.classList.add('home-mode');
         settingsBtn.innerHTML = `
