@@ -1,6 +1,5 @@
 /* Wordlist — логика приложения.
-   Зависит от data/a1.js, data/a2.js, data/b1.js, data/b2.js (англ.),
-   data/ge_a1.js (нем.), data/tr_b2.js (тур.). */
+   Базы данных (data/a1.js и др.) подгружаются лениво. */
 
 /* ===== Supabase ===== */
 const SUPABASE_URL = 'https://stojqwedqwijwjmneacy.supabase.co';
@@ -141,28 +140,82 @@ const levelColors = {
     C2: '#e0e0e0',
 };
 
-const BANKS = {
-    en: {
-        A1: typeof WORDS_A1 !== 'undefined' ? WORDS_A1 : null,
-        A2: typeof WORDS_A2 !== 'undefined' ? WORDS_A2 : null,
-        B1: typeof WORDS_B1 !== 'undefined' ? WORDS_B1 : null,
-        B2: typeof WORDS_B2 !== 'undefined' ? WORDS_B2 : null,
-    },
-    de: {
-        A1: typeof WORDS_GE_A1 !== 'undefined' ? WORDS_GE_A1 : null,
-    },
-    tr: {
-        B2: typeof WORDS_TR_B2 !== 'undefined' ? WORDS_TR_B2 : null,
-    },
+/* ===== Ленивая загрузка баз ===== */
+const BANK_FILES = {
+    'en_A1': 'data/a1.js',
+    'en_A2': 'data/a2.js',
+    'en_B1': 'data/b1.js',
+    'en_B2': 'data/b2.js',
+    'de_A1': 'data/ge_a1.js',
+    'tr_B2': 'data/tr_b2.js',
 };
 
-function hasBank(level) {
-    const l = BANKS[currentLanguage];
-    return !!(l && l[level] && l[level].length);
+const AVAILABLE_BY_LANG = {
+    en: ['A1', 'A2', 'B1', 'B2'],
+    de: ['A1'],
+    tr: ['B2'],
+};
+
+/* Данные, уже загруженные в память: BANKS[lang][level] = массив или null */
+const BANKS = {
+    en: { A1: null, A2: null, B1: null, B2: null },
+    de: { A1: null },
+    tr: { B2: null },
+};
+
+const loadedBanks = {};
+
+function bankKey(lang, level) {
+    return lang + '_' + level;
 }
+
+function bankFile(lang, level) {
+    return BANK_FILES[bankKey(lang, level)] || null;
+}
+
+function hasBankInLang(lang, level) {
+    return (AVAILABLE_BY_LANG[lang] || []).includes(level);
+}
+
+function hasBank(level) {
+    return hasBankInLang(currentLanguage, level);
+}
+
 function getBank(level) {
     const l = BANKS[currentLanguage];
     return (l && l[level]) ? l[level] : null;
+}
+
+/* Загрузка скрипта с базой */
+function loadBank(lang, level) {
+    return new Promise((resolve, reject) => {
+        const key = bankKey(lang, level);
+        const file = bankFile(lang, level);
+
+        if (!file) { resolve(null); return; }
+        if (loadedBanks[key]) { resolve(BANKS[lang][level]); return; }
+
+        const script = document.createElement('script');
+        script.src = file;
+        script.async = true;
+        script.onload = () => {
+            // Раскладываем по BANKS
+            if (lang === 'en') {
+                if (level === 'A1' && typeof WORDS_A1 !== 'undefined') BANKS.en.A1 = WORDS_A1;
+                if (level === 'A2' && typeof WORDS_A2 !== 'undefined') BANKS.en.A2 = WORDS_A2;
+                if (level === 'B1' && typeof WORDS_B1 !== 'undefined') BANKS.en.B1 = WORDS_B1;
+                if (level === 'B2' && typeof WORDS_B2 !== 'undefined') BANKS.en.B2 = WORDS_B2;
+            } else if (lang === 'de') {
+                if (level === 'A1' && typeof WORDS_GE_A1 !== 'undefined') BANKS.de.A1 = WORDS_GE_A1;
+            } else if (lang === 'tr') {
+                if (level === 'B2' && typeof WORDS_TR_B2 !== 'undefined') BANKS.tr.B2 = WORDS_TR_B2;
+            }
+            loadedBanks[key] = true;
+            resolve(BANKS[lang][level]);
+        };
+        script.onerror = () => reject(new Error('Не удалось загрузить ' + file));
+        document.head.appendChild(script);
+    });
 }
 
 function storageLevelKey() {
@@ -202,7 +255,14 @@ function updateHeaderBadges() {
     }
 }
 
-function refreshCurrentScreen() {
+async function refreshCurrentScreen() {
+    // Догрузить базу, если её ещё нет
+    try {
+        await loadBank(currentLanguage, currentLevel);
+    } catch (e) {
+        console.warn(e);
+    }
+
     updateHeaderBadges();
 
     if (screen === 'home')          renderHome();
@@ -214,7 +274,7 @@ function refreshCurrentScreen() {
     updateHeader();
 }
 
-homeLangBadge.addEventListener('click', (e) => {
+homeLangBadge.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (inTrainingMode()) return;
@@ -222,27 +282,27 @@ homeLangBadge.addEventListener('click', (e) => {
     currentLanguage = nextLang(currentLanguage);
     saveLang(currentLanguage);
 
-    if (!hasBank(currentLevel)) {
-        const available = levels.filter(l => l.enabled && hasBank(l.code));
+    if (!hasBankInLang(currentLanguage, currentLevel)) {
+        const available = levels.filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
         if (available.length) currentLevel = available[0].code;
     }
 
-    refreshCurrentScreen();
+    await refreshCurrentScreen();
 });
 
-homeLevelIcon.addEventListener('click', (e) => {
+homeLevelIcon.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (inTrainingMode()) return;
 
-    const available = levels.filter(l => l.enabled && hasBank(l.code));
+    const available = levels.filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
     if (!available.length) return;
 
     const curIdx = available.findIndex(l => l.code === currentLevel);
     const next = available[(curIdx + 1) % available.length];
     currentLevel = next.code;
 
-    refreshCurrentScreen();
+    await refreshCurrentScreen();
 });
 
 /* ===== Модальное окно авторизации ===== */
@@ -522,10 +582,8 @@ function updateHeader() {
     historyBtn.classList.toggle('active', screen === 'history' || screen === 'history-entry');
     settingsBtn.classList.toggle('active', screen === 'settings');
 
-    // Кнопка «Результаты» на экране истории показывает «Назад»
     historyBtn.textContent = (screen === 'history' || screen === 'history-entry') ? 'Назад' : 'Результаты';
 
-    // Кнопка настроек на экране настроек показывает иконку домика
     if (screen === 'settings') {
         settingsBtn.classList.add('home-mode');
         settingsBtn.innerHTML = `
@@ -627,13 +685,13 @@ async function updateProgressBar() {
 
 /* ===== Главный экран ===== */
 function renderHome() {
-    if (!hasBank(currentLevel)) {
-        const first = levels.find(l => l.enabled && hasBank(l.code));
+    if (!hasBankInLang(currentLanguage, currentLevel)) {
+        const first = levels.find(l => l.enabled && hasBankInLang(currentLanguage, l.code));
         if (first) currentLevel = first.code;
     }
 
     const levelsHtml = levels.map(lvl => {
-        const bankExists = hasBank(lvl.code);
+        const bankExists = hasBankInLang(currentLanguage, lvl.code);
         const isActive = lvl.code === currentLevel && bankExists;
 
         let cls = 'level-btn';
@@ -650,7 +708,7 @@ function renderHome() {
         return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
     }).join('');
 
-    const canStart = hasBank(currentLevel);
+    const canStart = hasBankInLang(currentLanguage, currentLevel);
     const startCls = canStart ? 'start-btn' : 'start-btn disabled';
 
     view.innerHTML = `
@@ -671,16 +729,17 @@ function renderHome() {
             const lvl = btn.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
+            try {
+                await loadBank(currentLanguage, currentLevel);
+            } catch (e) {
+                console.warn(e);
+            }
             renderHome();
             await updateProgressBar();
         });
     });
 
     document.getElementById('startBtn').addEventListener('click', () => {
-        if (!hasBank(currentLevel)) {
-            alert('База для уровня ' + currentLevel + ' на этом языке ещё не подключена.');
-            return;
-        }
         startSession();
     });
 
@@ -690,6 +749,25 @@ function renderHome() {
 
 /* ===== Старт сессии ===== */
 async function startSession() {
+    const startBtn = document.getElementById('startBtn');
+    const labelEl  = startBtn ? startBtn.querySelector('.start-btn-label') : null;
+    const counterEl = startBtn ? startBtn.querySelector('.start-btn-counter') : null;
+    const originalLabel = labelEl ? labelEl.textContent : '';
+
+    // Индикатор загрузки
+    if (labelEl) labelEl.textContent = 'Загрузка…';
+    if (counterEl) counterEl.textContent = '';
+
+    try {
+        await loadBank(currentLanguage, currentLevel);
+    } catch (e) {
+        if (labelEl) labelEl.textContent = originalLabel;
+        alert('Не удалось загрузить базу. Проверьте соединение.');
+        return;
+    }
+
+    if (labelEl) labelEl.textContent = originalLabel;
+
     const bank = getBank(currentLevel);
     if (!bank || !bank.length) {
         alert('База для уровня ' + currentLevel + ' на этом языке ещё не подключена.');
@@ -2001,7 +2079,6 @@ document.addEventListener('keydown', handleCheckOneKey);
         const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         root.style.setProperty('--keyboard-offset', hidden + 'px');
 
-        // Сдвигаем .stage вверх, если браузер прокручивает страницу
         stage.style.transform = vv.offsetTop
             ? `translateX(-50%) translateY(${vv.offsetTop}px)`
             : 'translateX(-50%)';
@@ -2016,6 +2093,14 @@ document.addEventListener('keydown', handleCheckOneKey);
 window.addEventListener('DOMContentLoaded', async () => {
     updateCheckCols();
     await initAuth();
+
+    // Загружаем базу для текущего языка/уровня
+    try {
+        await loadBank(currentLanguage, currentLevel);
+    } catch (e) {
+        console.warn(e);
+    }
+
     renderHome();
 
     if ('speechSynthesis' in window) {
