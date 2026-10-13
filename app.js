@@ -182,8 +182,6 @@ const loginBtn       = document.getElementById('loginBtn');
 const signupBtn      = document.getElementById('signupBtn');
 const settingsBtn    = document.getElementById('settingsBtn');
 const topbarInner    = document.querySelector('.topbar-inner');
-const progressWrap   = document.getElementById('progressWrap');
-const progressCount  = document.getElementById('progressCount');
 const homeLangBadge  = document.getElementById('homeLangBadge');
 const homeLevelIcon  = document.getElementById('homeLevelIcon');
 
@@ -530,8 +528,6 @@ function updateHeader() {
     const showTimer = (screen === 'train') && sessionTime > 0;
     timerWrap.style.display = showTimer ? '' : 'none';
 
-    progressWrap.style.display = (screen === 'home') ? 'flex' : 'none';
-
     if (screen === 'home') updateProgressBar();
 
     if (screen === 'results') {
@@ -580,14 +576,15 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Счётчик + плашки языка и уровня ===== */
+/* ===== Плашки языка и уровня + счётчик на главном ===== */
 async function updateProgressBar() {
     const bank = getBank(currentLevel) || [];
     const total = bank.length;
     const prog = await loadProgress();
     const learned = prog.learned.length;
 
-    progressCount.textContent = `${learned} / ${total}`;
+    const homeProgress = document.getElementById('homeProgress');
+    if (homeProgress) homeProgress.textContent = `${learned} / ${total}`;
 
     if (homeLangBadge) {
         homeLangBadge.textContent = langShort(currentLanguage);
@@ -631,9 +628,12 @@ function renderHome() {
     view.innerHTML = `
         <div class="home-layout">
             <div class="levels-column">${levelsHtml}</div>
-            <button class="${startCls}" id="startBtn">
-                Начать тренировку
-            </button>
+            <div class="start-column">
+                <button class="${startCls}" id="startBtn">
+                    Начать тренировку
+                </button>
+                <div class="home-progress" id="homeProgress">0 / 0</div>
+            </div>
         </div>
     `;
 
@@ -1800,7 +1800,6 @@ function renderSettings() {
 
     const settingsArea = view.querySelector('.settings-area');
 
-    /* Сброс прогресса текущего языка/уровня */
     const resetRow = document.createElement('div');
     resetRow.className = 'settings-row';
     resetRow.id = 'rowReset';
@@ -1827,7 +1826,6 @@ function renderSettings() {
     });
     settingsArea.appendChild(resetRow);
 
-    /* Сброс всего прогресса */
     const resetAllRow = document.createElement('div');
     resetAllRow.className = 'settings-row';
     resetAllRow.id = 'rowResetAll';
