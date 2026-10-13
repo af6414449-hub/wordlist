@@ -1,6 +1,6 @@
 /* Wordlist — логика приложения.
-   Зависит от a1.js, a2.js, b1.js, b2.js (англ.),
-   ge_a1.js (нем.), tr_b2.js (тур.). */
+   Зависит от data/a1.js, data/a2.js, data/b1.js, data/b2.js (англ.),
+   data/ge_a1.js (нем.), data/tr_b2.js (тур.). */
 
 /* ===== Supabase ===== */
 const SUPABASE_URL = 'https://stojqwedqwijwjmneacy.supabase.co';
@@ -174,7 +174,6 @@ const signupBtn      = document.getElementById('signupBtn');
 const settingsBtn    = document.getElementById('settingsBtn');
 const topbarInner    = document.querySelector('.topbar-inner');
 const progressWrap   = document.getElementById('progressWrap');
-const progressFill   = document.getElementById('progressFill');
 const progressCount  = document.getElementById('progressCount');
 const homeLangBadge  = document.getElementById('homeLangBadge');
 const homeLevelIcon  = document.getElementById('homeLevelIcon');
@@ -189,6 +188,8 @@ function refreshCurrentScreen() {
     else if (screen === 'settings') renderSettings();
     else if (screen === 'results')  renderResults();
     else if (screen === 'history' || screen === 'history-entry') renderHistory();
+
+    updateProgressBar();
     updateHeader();
 }
 
@@ -200,6 +201,15 @@ homeLangBadge.addEventListener('click', (e) => {
 
     currentLanguage = nextLang(currentLanguage);
     saveLang(currentLanguage);
+
+    // Если у нового языка нет текущего уровня — переключиться на первый доступный
+    if (!hasBank(currentLevel)) {
+        const available = levels.filter(l => l.enabled && hasBank(l.code));
+        if (available.length) {
+            currentLevel = available[0].code;
+        }
+    }
+
     refreshCurrentScreen();
 });
 
@@ -558,16 +568,13 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Прогресс-бар + плашки языка и уровня ===== */
+/* ===== Счётчик + плашки языка и уровня ===== */
 async function updateProgressBar() {
     const bank = getBank(currentLevel) || [];
     const total = bank.length;
     const prog = await loadProgress();
     const learned = prog.learned.length;
 
-    const pct = total ? Math.round(learned / total * 100) : 0;
-
-    progressFill.style.width = pct + '%';
     progressCount.textContent = `${learned} / ${total}`;
 
     if (homeLangBadge) homeLangBadge.textContent = langShort(currentLanguage);
@@ -1673,7 +1680,15 @@ function renderSettings() {
     const switchLang = () => {
         currentLanguage = nextLang(currentLanguage);
         saveLang(currentLanguage);
+
+        if (!hasBank(currentLevel)) {
+            const available = levels.filter(l => l.enabled && hasBank(l.code));
+            if (available.length) currentLevel = available[0].code;
+        }
+
         renderSettings();
+        updateProgressBar();
+        updateHeader();
     };
     document.getElementById('rowLang').addEventListener('click', (e) => {
         if (e.target.closest('.size-btn')) return;
