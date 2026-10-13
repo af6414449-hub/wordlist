@@ -180,6 +180,16 @@ const homeLangBadge  = document.getElementById('homeLangBadge');
 const homeLevelIcon  = document.getElementById('homeLevelIcon');
 const levelsTabs     = document.getElementById('levelsTabs');
 
+/* ===== Клик по плашке языка ===== */
+homeLangBadge.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    currentLanguage = nextLang(currentLanguage);
+    saveLang(currentLanguage);
+    if (screen === 'home') renderHome();
+    updateHeader();
+});
+
 /* ===== Модальное окно авторизации ===== */
 const authOverlay  = document.getElementById('authOverlay');
 const authTitle    = document.getElementById('authTitle');
@@ -948,10 +958,16 @@ function renderCheckOne() {
     });
     document.getElementById('btnNext').addEventListener('click', () => {
         saveOneInput();
-        if (currentPerson >= sessionWords.length - 1) return;
-        currentPerson++;
-        renderCheckOne();
-        updateHeader();
+        if (currentPerson < sessionWords.length - 1) {
+            currentPerson++;
+            renderCheckOne();
+            updateHeader();
+        } else {
+            // Последняя карточка → сразу к результатам
+            checkPhase = 'result';
+            renderCheckOne();
+            updateHeader();
+        }
     });
 
     const inp = document.getElementById('oneInput');
@@ -966,7 +982,6 @@ function renderCheckOne() {
 
         try { inp.focus({ preventScroll: true }); } catch (_) {}
 
-        // На мобильных — поднять карточку над клавиатурой
         if (window.visualViewport && window.innerWidth <= 720) {
             setTimeout(() => {
                 const fs = document.getElementById('faceSquare');
