@@ -337,7 +337,7 @@
             color: #fff;
             background: #4a4a4a;
             cursor: pointer;
-            padding: 0.5em 0.75em 0.9em;
+            padding: 0.6em 0.75em;
             transition: transform 0.1s, background 0.15s;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -359,16 +359,14 @@
             pointer-events: none;
         }
         .start-btn-counter {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0.25em;
+            position: relative;
             z-index: 1;
             pointer-events: none;
-            font-size: 0.42em;
+            margin-top: 0.15em;
+            font-size: 0.55em;
             font-weight: 700;
             letter-spacing: 0.04em;
-            color: rgba(255,255,255,0.85);
+            color: rgba(255,255,255,0.9);
             font-variant-numeric: tabular-nums;
             text-align: center;
         }
@@ -386,7 +384,7 @@
         @media (max-width: 400px) {
             .levels-column { width: 70px; }
             .level-btn { height: 30px; font-size: 12px; }
-            .start-btn { padding: 0.4em 0.5em 0.8em; font-size: clamp(14px, 4.5vw, 20px); }
+            .start-btn { padding: 0.5em 0.5em; font-size: clamp(14px, 4.5vw, 20px); }
         }
 
         .settings-area {
