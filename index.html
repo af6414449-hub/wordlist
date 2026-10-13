@@ -121,22 +121,6 @@
             flex: 0 1 auto;
             min-width: 0;
         }
-        .progress-bar {
-            position: relative;
-            width: 110px;
-            height: 14px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 7px;
-            overflow: hidden;
-            flex: 0 0 auto;
-        }
-        .progress-bar-fill {
-            position: absolute;
-            top: 0; left: 0; bottom: 0;
-            background: #2ecc71;
-            border-radius: 7px;
-            transition: width 0.3s;
-        }
         .progress-count {
             color: #fff;
             font-size: 16px;
@@ -248,7 +232,6 @@
 
             .finish-btn { padding: 0.55em 1.4em; font-size: 17px; }
 
-            .progress-bar { width: 80px; height: 12px; }
             .progress-count { font-size: 14px; }
         }
 
@@ -270,7 +253,6 @@
             .center-slot { gap: 0.3em; }
             .finish-btn { padding: 0.45em 1em; font-size: 15px; }
 
-            .progress-bar { width: 60px; height: 11px; }
             .progress-count { font-size: 13px; }
             .progress-wrap { margin-left: 0.5em; gap: 0.4em; }
         }
@@ -286,8 +268,6 @@
             .settings-btn { width: 38px; height: 38px; }
             .settings-btn svg { width: 20px; height: 20px; }
             .lang-badge, .level-icon { min-width: 36px; height: 36px; font-size: 12px; }
-
-            .progress-bar { width: 50px; height: 10px; }
         }
 
         .wrapper {
@@ -812,9 +792,6 @@
                 </a>
 
                 <div class="progress-wrap" id="progressWrap">
-                    <div class="progress-bar">
-                        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
-                    </div>
                     <span class="progress-count" id="progressCount">0 / 0</span>
                 </div>
 
@@ -877,12 +854,12 @@
         </div>
     </div>
 
-    <script src="a1.js"></script>
-    <script src="a2.js"></script>
-    <script src="b1.js"></script>
-    <script src="b2.js"></script>
-    <script src="ge_a1.js"></script>
-    <script src="tr_b2.js"></script>
+    <script src="data/a1.js"></script>
+    <script src="data/a2.js"></script>
+    <script src="data/b1.js"></script>
+    <script src="data/b2.js"></script>
+    <script src="data/ge_a1.js"></script>
+    <script src="data/tr_b2.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>
