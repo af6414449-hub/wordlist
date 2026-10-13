@@ -42,16 +42,13 @@ function saveLang(v) {
 let currentLanguage = loadLang();
 
 const langColors = {
-    en: '#3b82f6',
-    de: '#f59e0b',
-    tr: '#ef4444',
+    en: '#6b8cae',
+    de: '#c89b54',
+    tr: '#b56b6b',
 };
 
 function langColor(code) {
     return langColors[code] || '#888';
-}
-function langTextColor(_code) {
-    return '#fff';
 }
 function langLabel(code) {
     if (code === 'en') return 'English';
@@ -1660,8 +1657,7 @@ function renderSettings() {
 
             <div class="settings-row" id="rowLang">
                 <span>Язык</span>
-                <span style="margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:24px;padding:0 0.6em;border-radius:4px;background:${langColor(currentLanguage)};color:#fff;font-size:12px;font-weight:700;margin-right:0.5em;">${langShort(currentLanguage)}</span>
-                <button class="size-btn" id="langBtn" style="margin-left:0;">${langLabel(currentLanguage)}</button>
+                <button class="size-btn" id="langBtn" style="margin-left:auto;background:${langColor(currentLanguage)};">${langLabel(currentLanguage)}</button>
             </div>
 
             <div class="settings-row" id="rowCheckMode">
@@ -1812,7 +1808,7 @@ function renderSettings() {
     resetRow.innerHTML = `
         <span>Сбросить прогресс</span>
         <span style="margin-left:auto;display:inline-flex;gap:0.4em;align-items:center;">
-            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:24px;padding:0 0.6em;border-radius:4px;background:${langColor(currentLanguage)};color:#fff;font-size:12px;font-weight:700;">${langShort(currentLanguage)}</span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:24px;padding:0 0.6em;border-radius:4px;background:${langColor(currentLanguage)};color:#fff;font-size:12px;font-weight:700;">${langLabel(currentLanguage)}</span>
             <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 0.5em;border-radius:4px;background:${levelColors[currentLevel] || '#e0e0e0'};color:${currentLevel === 'B1' ? '#000' : '#fff'};font-size:12px;font-weight:700;">${currentLevel}</span>
         </span>
     `;
