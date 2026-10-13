@@ -1045,11 +1045,12 @@ function renderCheckOne() {
 
         if (window.visualViewport && window.innerWidth <= 720) {
             setTimeout(() => {
-                const fs = document.getElementById('faceSquare');
-                if (fs) {
-                    try { fs.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
+                try {
+                    inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                } catch (_) {
+                    try { inp.scrollIntoView(); } catch (__) {}
                 }
-            }, 300);
+            }, 350);
         }
     }
 
@@ -1994,26 +1995,16 @@ document.addEventListener('keydown', handleCheckOneKey);
 
     const root = document.documentElement;
     const stage = document.querySelector('.stage');
-    const wrapper = document.querySelector('.wrapper');
 
     const update = () => {
         const vv = window.visualViewport;
         const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
         root.style.setProperty('--keyboard-offset', hidden + 'px');
 
-        if (hidden > 50) {
-            stage.style.height = vv.height + 'px';
-            stage.style.minHeight = '0';
-            stage.style.overflow = 'hidden';
-            wrapper.style.overflowY = 'auto';
-            wrapper.style.paddingBottom = '0.5em';
-        } else {
-            stage.style.height = '';
-            stage.style.minHeight = '';
-            stage.style.overflow = '';
-            wrapper.style.overflowY = '';
-            wrapper.style.paddingBottom = '';
-        }
+        // Сдвигаем .stage вверх, если браузер прокручивает страницу
+        stage.style.transform = vv.offsetTop
+            ? `translateX(-50%) translateY(${vv.offsetTop}px)`
+            : 'translateX(-50%)';
     };
 
     window.visualViewport.addEventListener('resize', update);
