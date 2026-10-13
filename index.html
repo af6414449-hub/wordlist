@@ -19,6 +19,7 @@
             color: #212121;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             font-size: 14px; line-height: 1.5; height: 100%;
+            overflow-x: hidden;
         }
 
         body {
@@ -47,6 +48,7 @@
             min-height: 100vh; background: #ffffff;
             box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
             display: flex; flex-direction: column;
+            overflow-x: hidden;
         }
 
         /* ===== Шапка ===== */
@@ -79,7 +81,7 @@
             height: 56px;
             padding: 0 0.8em;
             border-radius: 10px;
-            background: rgba(255,255,255,0.15);
+            background: #3b82f6;
             color: #fff;
             font-family: inherit;
             font-size: 18px;
@@ -536,7 +538,7 @@
             line-height: 1.1;
             cursor: pointer;
         }
-        .train-controls { display: flex; gap: 0.5em; }
+        .train-controls { display: flex; gap: 0.5em; align-items: center; }
         .ctrl-btn {
             width: 56px; height: 44px; border: none; border-radius: 4px;
             background: #2f8fd6; color: #fff; font-size: 20px;
@@ -546,6 +548,23 @@
         }
         .ctrl-btn:hover { background: #2679b6; }
         .ctrl-btn:active { transform: scale(0.95); }
+
+        .card-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            height: 44px;
+            padding: 0 0.6em;
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+        .train-controls .card-counter { background: rgba(0,0,0,0.55); }
 
         .check-area {
             flex: 1 1 auto; min-height: 0;
