@@ -115,22 +115,6 @@
         .level-icon:active { transform: scale(0.95); }
         .level-icon[data-level="B1"] { color: #000; }
 
-        .progress-wrap {
-            display: none;
-            align-items: center;
-            gap: 0.5em;
-            margin-left: 0.75em;
-            flex: 0 1 auto;
-            min-width: 0;
-        }
-        .progress-count {
-            color: #fff;
-            font-size: 16px;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
             margin-left: 0.5em; flex-wrap: wrap;
@@ -233,8 +217,6 @@
             .timer b { font-size: 18px; min-width: 2.4em; }
 
             .finish-btn { padding: 0.55em 1.4em; font-size: 17px; }
-
-            .progress-count { font-size: 14px; }
         }
 
         @media (max-width: 560px) {
@@ -254,9 +236,6 @@
 
             .center-slot { gap: 0.3em; }
             .finish-btn { padding: 0.45em 1em; font-size: 15px; }
-
-            .progress-count { font-size: 13px; }
-            .progress-wrap { margin-left: 0.5em; gap: 0.4em; }
         }
 
         @media (max-width: 400px) {
@@ -334,19 +313,27 @@
         .level-btn.disabled:hover { background: #ededed; }
         .level-btn.disabled:active { transform: none; }
 
-        .start-btn {
+        .start-column {
             flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .start-btn {
+            flex: 1 1 auto;
             min-width: 0;
             border: none;
             border-radius: 8px;
             font-family: inherit;
-            font-size: clamp(16px, 5vw, 44px);
+            font-size: clamp(20px, 6vw, 56px);
             line-height: 1.1;
             font-weight: 700;
             color: #fff;
             background: #4a4a4a;
             cursor: pointer;
-            padding: 0.5em 0.75em;
+            padding: 0.55em 0.85em;
             transition: transform 0.1s, background 0.15s;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -361,20 +348,35 @@
         .start-btn.disabled { opacity: 0.5; cursor: not-allowed; }
         .start-btn.disabled:hover { background: #4a4a4a; }
 
+        .home-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 0.6em;
+            color: #555;
+            font-size: 20px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+
         @media (max-width: 900px) {
             .home-layout { margin-left: 1em; margin-right: 1em; gap: 0.8em; }
             .levels-column { width: 130px; }
             .level-btn { height: 40px; font-size: 17px; }
+            .home-progress { font-size: 18px; }
         }
         @media (max-width: 640px) {
             .home-layout { margin-left: 0.5em; margin-right: 0.5em; gap: 0.5em; }
             .levels-column { width: 90px; gap: 0.3em; }
             .level-btn { height: 34px; font-size: 13px; }
+            .home-progress { font-size: 16px; margin-top: 0.4em; }
         }
         @media (max-width: 400px) {
             .levels-column { width: 70px; }
             .level-btn { height: 30px; font-size: 12px; }
-            .start-btn { padding: 0.4em 0.5em; font-size: clamp(13px, 4.5vw, 18px); }
+            .start-btn { padding: 0.4em 0.5em; font-size: clamp(15px, 4.8vw, 20px); }
+            .home-progress { font-size: 14px; }
         }
 
         .settings-area {
@@ -808,10 +810,6 @@
                     <span class="lang-badge" id="homeLangBadge">EN</span>
                     <span class="level-icon" id="homeLevelIcon">A1</span>
                 </a>
-
-                <div class="progress-wrap" id="progressWrap">
-                    <span class="progress-count" id="progressCount">0 / 0</span>
-                </div>
 
                 <div class="train-slot" id="trainSlot" style="display:none">
                     <div class="timer" id="timerWrap">Осталось: <b id="timerValue">1:00</b></div>
