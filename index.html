@@ -86,6 +86,7 @@
             font-weight: 700;
             line-height: 1;
             letter-spacing: 0.02em;
+            cursor: pointer;
             transition: background 0.15s, transform 0.1s;
         }
         .lang-badge:active { transform: scale(0.95); }
@@ -143,35 +144,6 @@
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
-
-        .levels-tabs {
-            display: none;
-            align-items: center; gap: 0.35em;
-            margin-left: 0.5em;
-            flex: 0 0 auto;
-            flex-wrap: wrap;
-        }
-        .level-tab {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-width: 56px; height: 40px; padding: 0 0.9em;
-            border-radius: 8px;
-            border: none;
-            font-family: inherit;
-            font-size: 17px; font-weight: 700;
-            color: #fff;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s, opacity 0.15s;
-        }
-        .level-tab.active { opacity: 1; }
-        .level-tab:not(.active) {
-            background: rgba(255,255,255,0.15) !important;
-            color: rgba(255,255,255,0.55);
-        }
-        .level-tab:not(.active):hover {
-            background: rgba(255,255,255,0.25) !important;
-            color: #fff;
-        }
-        .level-tab.active[data-level="B1"] { color: #000; }
 
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
@@ -278,8 +250,6 @@
 
             .progress-bar { width: 80px; height: 12px; }
             .progress-count { font-size: 14px; }
-
-            .level-tab { min-width: 46px; height: 34px; font-size: 15px; }
         }
 
         @media (max-width: 560px) {
@@ -303,8 +273,6 @@
             .progress-bar { width: 60px; height: 11px; }
             .progress-count { font-size: 13px; }
             .progress-wrap { margin-left: 0.5em; gap: 0.4em; }
-
-            .level-tab { min-width: 40px; height: 30px; font-size: 14px; }
         }
 
         @media (max-width: 400px) {
@@ -849,8 +817,6 @@
                     </div>
                     <span class="progress-count" id="progressCount">0 / 0</span>
                 </div>
-
-                <div class="levels-tabs" id="levelsTabs"></div>
 
                 <div class="train-slot" id="trainSlot" style="display:none">
                     <div class="timer" id="timerWrap">Осталось: <b id="timerValue">1:00</b></div>
