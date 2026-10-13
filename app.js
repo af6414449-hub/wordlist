@@ -41,6 +41,18 @@ function saveLang(v) {
 }
 let currentLanguage = loadLang();
 
+const langColors = {
+    en: '#3b82f6',
+    de: '#f59e0b',
+    tr: '#ef4444',
+};
+
+function langColor(code) {
+    return langColors[code] || '#888';
+}
+function langTextColor(_code) {
+    return '#fff';
+}
 function langLabel(code) {
     if (code === 'en') return 'English';
     if (code === 'tr') return 'Türkçe';
@@ -193,7 +205,6 @@ function refreshCurrentScreen() {
     updateHeader();
 }
 
-/* Клик по плашке языка — только вне тренировки */
 homeLangBadge.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -202,18 +213,14 @@ homeLangBadge.addEventListener('click', (e) => {
     currentLanguage = nextLang(currentLanguage);
     saveLang(currentLanguage);
 
-    // Если у нового языка нет текущего уровня — переключиться на первый доступный
     if (!hasBank(currentLevel)) {
         const available = levels.filter(l => l.enabled && hasBank(l.code));
-        if (available.length) {
-            currentLevel = available[0].code;
-        }
+        if (available.length) currentLevel = available[0].code;
     }
 
     refreshCurrentScreen();
 });
 
-/* Клик по плашке уровня — крутить по кругу только вне тренировки */
 homeLevelIcon.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -454,6 +461,14 @@ async function resetProgress() {
     if (error) console.warn('resetProgress error:', error.message);
 }
 
+async function resetAllProgress() {
+    if (!currentUser) return;
+    const { error } = await sb.from('progress')
+        .delete()
+        .eq('user_id', currentUser.id);
+    if (error) console.warn('resetAllProgress error:', error.message);
+}
+
 /* ===== История (только Supabase) ===== */
 async function loadHistory() {
     if (!currentUser) return [];
@@ -577,7 +592,10 @@ async function updateProgressBar() {
 
     progressCount.textContent = `${learned} / ${total}`;
 
-    if (homeLangBadge) homeLangBadge.textContent = langShort(currentLanguage);
+    if (homeLangBadge) {
+        homeLangBadge.textContent = langShort(currentLanguage);
+        homeLangBadge.style.background = langColor(currentLanguage);
+    }
 
     const color = levelColors[currentLevel] || '#e0e0e0';
     homeLevelIcon.textContent = currentLevel;
@@ -710,6 +728,10 @@ function ensureThumbVisible() {
     }
 }
 
+function counterHTML() {
+    return `<span class="card-counter">${currentPerson + 1} / ${sessionWords.length}</span>`;
+}
+
 /* ===== Экран тренировки ===== */
 function renderTrain() {
     view.innerHTML = `
@@ -722,6 +744,7 @@ function renderTrain() {
                     <div class="train-controls">
                         <button class="ctrl-btn" id="btnFirst">⏮</button>
                         <button class="ctrl-btn" id="btnPrev">◀</button>
+                        ${counterHTML()}
                         <button class="ctrl-btn" id="btnNext">▶</button>
                     </div>
                 </div>
@@ -786,6 +809,9 @@ function updateTrainCard() {
 
     fitFontSize(fs, 40, 14);
     fitFontSize(np, 34, 12);
+
+    const counterEl = document.querySelector('.card-counter');
+    if (counterEl) counterEl.textContent = `${currentPerson + 1} / ${sessionWords.length}`;
 
     updateThumbsActive();
     ensureThumbVisible();
@@ -937,6 +963,7 @@ function renderCheckOne() {
                     <div class="train-controls">
                         <button class="ctrl-btn" id="btnFirst">⏮</button>
                         <button class="ctrl-btn" id="btnPrev">◀</button>
+                        ${counterHTML()}
                         <button class="ctrl-btn" id="btnNext">▶</button>
                     </div>
                 </div>
@@ -1633,7 +1660,8 @@ function renderSettings() {
 
             <div class="settings-row" id="rowLang">
                 <span>Язык</span>
-                <button class="size-btn" id="langBtn">${langLabel(currentLanguage)}</button>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:24px;padding:0 0.6em;border-radius:4px;background:${langColor(currentLanguage)};color:#fff;font-size:12px;font-weight:700;margin-right:0.5em;">${langShort(currentLanguage)}</span>
+                <button class="size-btn" id="langBtn" style="margin-left:0;">${langLabel(currentLanguage)}</button>
             </div>
 
             <div class="settings-row" id="rowCheckMode">
@@ -1776,6 +1804,7 @@ function renderSettings() {
 
     const settingsArea = view.querySelector('.settings-area');
 
+    /* Сброс прогресса текущего языка/уровня */
     const resetRow = document.createElement('div');
     resetRow.className = 'settings-row';
     resetRow.id = 'rowReset';
@@ -1783,7 +1812,7 @@ function renderSettings() {
     resetRow.innerHTML = `
         <span>Сбросить прогресс</span>
         <span style="margin-left:auto;display:inline-flex;gap:0.4em;align-items:center;">
-            <span style="font-size:13px;color:#777;font-weight:600;">${langLabel(currentLanguage)}</span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:24px;padding:0 0.6em;border-radius:4px;background:${langColor(currentLanguage)};color:#fff;font-size:12px;font-weight:700;">${langShort(currentLanguage)}</span>
             <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 0.5em;border-radius:4px;background:${levelColors[currentLevel] || '#e0e0e0'};color:${currentLevel === 'B1' ? '#000' : '#fff'};font-size:12px;font-weight:700;">${currentLevel}</span>
         </span>
     `;
@@ -1801,6 +1830,31 @@ function renderSettings() {
         renderSettings();
     });
     settingsArea.appendChild(resetRow);
+
+    /* Сброс всего прогресса */
+    const resetAllRow = document.createElement('div');
+    resetAllRow.className = 'settings-row';
+    resetAllRow.id = 'rowResetAll';
+    resetAllRow.style.cursor = 'pointer';
+    resetAllRow.innerHTML = `
+        <span style="color:#c0392b;">Сбросить весь прогресс</span>
+        <span style="margin-left:auto;font-size:13px;color:#c0392b;font-weight:600;">Все языки, все уровни</span>
+    `;
+    resetAllRow.addEventListener('click', async () => {
+        const ok = confirm(
+            `Сбросить весь прогресс?\n\n` +
+            `Все выученные слова по всем языкам и уровням будут забыты.\n` +
+            `История попыток сохранится.\n\n` +
+            `Действие нельзя отменить.`
+        );
+        if (!ok) return;
+
+        await resetAllProgress();
+        await updateProgressBar();
+        alert('Весь прогресс сброшен.');
+        renderSettings();
+    });
+    settingsArea.appendChild(resetAllRow);
 
     if (currentUser) {
         const logoutRow = document.createElement('div');
