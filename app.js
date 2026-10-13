@@ -190,7 +190,21 @@ function inTrainingMode() {
     return screen === 'train' || screen === 'check';
 }
 
+function updateHeaderBadges() {
+    if (homeLangBadge) {
+        homeLangBadge.textContent = langShort(currentLanguage);
+        homeLangBadge.style.background = langColor(currentLanguage);
+    }
+    if (homeLevelIcon) {
+        homeLevelIcon.textContent = currentLevel;
+        homeLevelIcon.dataset.level = currentLevel;
+        homeLevelIcon.style.background = levelColors[currentLevel] || '#e0e0e0';
+    }
+}
+
 function refreshCurrentScreen() {
+    updateHeaderBadges();
+
     if (screen === 'home')          renderHome();
     else if (screen === 'settings') renderSettings();
     else if (screen === 'results')  renderResults();
@@ -586,15 +600,7 @@ async function updateProgressBar() {
     const homeProgress = document.getElementById('homeProgress');
     if (homeProgress) homeProgress.textContent = `${learned} / ${total}`;
 
-    if (homeLangBadge) {
-        homeLangBadge.textContent = langShort(currentLanguage);
-        homeLangBadge.style.background = langColor(currentLanguage);
-    }
-
-    const color = levelColors[currentLevel] || '#e0e0e0';
-    homeLevelIcon.textContent = currentLevel;
-    homeLevelIcon.dataset.level = currentLevel;
-    homeLevelIcon.style.background = color;
+    updateHeaderBadges();
 }
 
 /* ===== Главный экран ===== */
