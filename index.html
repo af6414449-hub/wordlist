@@ -505,15 +505,18 @@
             flex: 1 1 auto; min-height: 0;
             display: flex; align-items: center; justify-content: center;
             padding: 1em; background: #f5f1e8;
-            border: 1px solid #ddd5c4; border-radius: 4px; overflow: hidden;
+            border: 1px solid #ddd5c4; border-radius: 4px;
+            overflow: auto;
         }
         .train-main {
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 0.6em; min-height: 0;
+            justify-content: flex-start;
+            padding-top: 0.5em;
+            gap: 0.6em; min-height: 0;
         }
         .face-square {
-            width: min(38vh, 320px);
-            aspect-ratio: 1 / 0.85;
+            width: min(30vh, 280px);
+            aspect-ratio: 1 / 0.75;
             background: #ffffff;
             border: 4px solid #ffffff;
             box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
@@ -546,7 +549,7 @@
             line-height: 1.2;
         }
         .name-plate {
-            width: min(38vh, 320px); padding: 0.4em 1em;
+            width: min(30vh, 280px); padding: 0.4em 1em;
             background: #ffffff; border-radius: 8px; text-align: center;
             font-size: clamp(22px, 2.4vw + 1vh, 34px);
             font-weight: 500;
@@ -623,9 +626,9 @@
         .check-input:disabled { cursor: default; }
 
         .check-input-one {
-            width: min(38vh, 320px);
-            height: 48px;
-            font-size: 20px;
+            width: min(30vh, 280px);
+            height: 44px;
+            font-size: 18px;
             font-weight: 600;
             text-align: center;
             border: 2px solid #fff;
@@ -633,11 +636,34 @@
         }
         .check-input-one:focus { border-color: #2f8fd6; }
 
+        @media (max-width: 720px) {
+            .face-square { width: min(26vh, 220px); }
+            .name-plate  { width: min(26vh, 220px); }
+        }
+
         @media (max-width: 560px) {
             .check-area { padding: 0.75em; }
             .check-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
             .check-img { font-size: 11px; padding: 0.3em; }
             .check-input { height: 30px; font-size: 15px; }
+
+            .thumbs { padding: 0.35em; gap: 0.35em; }
+            .thumb-img { width: 44px; height: 36px; font-size: 8px; }
+            .thumb-name { font-size: 9px; max-width: 52px; }
+
+            .face-square {
+                width: min(24vh, 180px);
+                font-size: clamp(20px, 5vw, 28px);
+            }
+            .name-plate {
+                width: min(24vh, 180px);
+                font-size: clamp(18px, 4.5vw, 26px);
+            }
+            .check-input-one {
+                width: min(26vh, 220px);
+                height: 42px;
+                font-size: 17px;
+            }
         }
 
         .results-area {
