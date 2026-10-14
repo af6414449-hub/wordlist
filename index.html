@@ -518,8 +518,12 @@
             width: 100%;
             max-width: 100%;
         }
+
+        /* ===== Карточка со значением ===== */
         .face-square {
-            width: min(30vh, 280px);
+            width: 80%;
+            max-width: 560px;
+            min-width: 0;
             height: min(25vh, 220px);
             aspect-ratio: auto;
             background: #ffffff;
@@ -553,8 +557,12 @@
             color: #666;
             line-height: 1.2;
         }
+
+        /* ===== Плашка со словом ===== */
         .name-plate {
-            width: min(30vh, 280px);
+            width: 80%;
+            max-width: 560px;
+            min-width: 0;
             height: 52px;
             padding: 0 1em;
             display: flex; align-items: center; justify-content: center;
@@ -633,8 +641,11 @@
         .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 600; border-color: #c0392b; }
         .check-input:disabled { cursor: default; }
 
+        /* ===== Большое поле ввода в режиме "По одной" ===== */
         .check-input-one {
-            width: min(30vh, 280px);
+            width: 80%;
+            max-width: 560px;
+            min-width: 0;
             height: 44px;
             font-size: 18px;
             font-weight: 600;
@@ -646,32 +657,18 @@
         }
         .check-input-one:focus { border-color: #2f8fd6; }
 
-        /* ===== Режим "По одной" — карточки шире ===== */
-        .train-area.single-check .face-square,
-        .train-area.single-check .name-plate,
-        .train-area.single-check .check-input-one {
-            width: 80%;
-            max-width: 560px;
-            min-width: 0;
-        }
-
-        .train-area.single-check .face-square {
-            height: min(25vh, 220px);
-        }
-
         @media (max-width: 720px) {
             .face-square {
-                width: min(26vh, 220px);
+                width: 90%;
+                max-width: none;
                 height: min(22vh, 180px);
             }
             .name-plate {
-                width: min(26vh, 220px);
+                width: 90%;
+                max-width: none;
                 height: 46px;
             }
-
-            .train-area.single-check .face-square,
-            .train-area.single-check .name-plate,
-            .train-area.single-check .check-input-one {
+            .check-input-one {
                 width: 90%;
                 max-width: none;
             }
@@ -688,23 +685,22 @@
             .thumb-name { font-size: 9px; max-width: 52px; }
 
             .face-square {
-                width: min(24vh, 180px);
+                width: 90%;
+                max-width: none;
                 height: min(20vh, 150px);
                 font-size: clamp(20px, 5vw, 28px);
             }
             .name-plate {
-                width: min(24vh, 180px);
+                width: 90%;
+                max-width: none;
                 height: 40px;
                 font-size: clamp(18px, 4.5vw, 26px);
             }
             .check-input-one {
-                width: min(26vh, 220px);
+                width: 90%;
+                max-width: none;
                 height: 42px;
                 font-size: 17px;
-            }
-
-            .train-area.single-check .face-square {
-                height: min(20vh, 150px);
             }
         }
 
