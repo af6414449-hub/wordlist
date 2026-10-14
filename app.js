@@ -719,6 +719,7 @@ async function startSession() {
     userAnswers  = sessionWords.map(() => '');
     currentPerson = 0;
     screen = 'train';
+    renderCheckOne._focusedOnce = false;   // сброс флага
     renderTrain();
     startTimer();
 }
@@ -886,6 +887,7 @@ function goToCheck() {
     userAnswers = sessionWords.map(item => buildHintMask(item.en));
 
     currentPerson = 0;
+    renderCheckOne._focusedOnce = false;   // сброс флага
     renderCheck();
 }
 
@@ -1032,18 +1034,18 @@ function renderCheckOne() {
             });
         }
 
-        try { inp.focus({ preventScroll: true }); } catch (_) {}
+        // Автофокус только при первом открытии проверки.
+        if (!renderCheckOne._focusedOnce) {
+            renderCheckOne._focusedOnce = true;
+            try { inp.focus({ preventScroll: true }); } catch (_) {}
 
-        if (window.visualViewport && window.innerWidth <= 720) {
-            const fix = () => {
-                try {
-                    inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                } catch (_) {
-                    try { inp.scrollIntoView(); } catch (__) {}
-                }
-            };
-            setTimeout(fix, 350);
-            setTimeout(fix, 700);
+            if (window.visualViewport && window.innerWidth <= 720) {
+                setTimeout(() => {
+                    try {
+                        inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    } catch (_) {}
+                }, 350);
+            }
         }
     }
 
