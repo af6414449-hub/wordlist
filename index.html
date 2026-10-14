@@ -515,6 +515,8 @@
             justify-content: flex-start;
             padding-top: 0.25em;
             gap: 0.6em; min-height: 0;
+            width: 100%;
+            max-width: 100%;
         }
         .face-square {
             width: min(30vh, 280px);
@@ -640,8 +642,22 @@
             border: 2px solid #fff;
             border-radius: 6px;
             box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+            padding: 0 0.6em;
         }
         .check-input-one:focus { border-color: #2f8fd6; }
+
+        /* ===== Режим "По одной" — карточки шире ===== */
+        .train-area.single-check .face-square,
+        .train-area.single-check .name-plate,
+        .train-area.single-check .check-input-one {
+            width: 80%;
+            max-width: 560px;
+            min-width: 0;
+        }
+
+        .train-area.single-check .face-square {
+            height: min(25vh, 220px);
+        }
 
         @media (max-width: 720px) {
             .face-square {
@@ -651,6 +667,13 @@
             .name-plate {
                 width: min(26vh, 220px);
                 height: 46px;
+            }
+
+            .train-area.single-check .face-square,
+            .train-area.single-check .name-plate,
+            .train-area.single-check .check-input-one {
+                width: 90%;
+                max-width: none;
             }
         }
 
@@ -678,6 +701,10 @@
                 width: min(26vh, 220px);
                 height: 42px;
                 font-size: 17px;
+            }
+
+            .train-area.single-check .face-square {
+                height: min(20vh, 150px);
             }
         }
 
