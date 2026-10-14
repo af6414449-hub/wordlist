@@ -59,6 +59,9 @@
             z-index: 1;
         }
 
+        /* Тёмная сцена, когда открыт главный экран */
+        .stage.dark-home { background: #1b1c1d; }
+
         /* ===== Шапка ===== */
         .topbar {
             min-height: 72px; flex: 0 0 auto;
@@ -75,31 +78,30 @@
         }
         .brand {
             display: flex; align-items: center;
-            gap: 0.4em;
+            gap: 0.5em;
             margin-right: 0.25em;
-            cursor: pointer;
             flex: 0 0 auto;
-            text-decoration: none;
         }
         .lang-badge {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 56px;
             height: 56px;
-            padding: 0 0.8em;
-            border-radius: 10px;
+            min-width: 130px;
+            padding: 0 1.2em;
+            border-radius: 12px;
             background: #6b8cae;
             color: #fff;
             font-family: inherit;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
-            line-height: 1;
             letter-spacing: 0.02em;
             cursor: pointer;
-            transition: background 0.15s, transform 0.1s;
+            transition: transform 0.12s, filter 0.15s;
+            border: none;
         }
-        .lang-badge:active { transform: scale(0.95); }
+        .lang-badge:hover  { filter: brightness(1.1); }
+        .lang-badge:active { transform: scale(0.94); }
 
         .level-icon {
             display: inline-flex;
@@ -107,20 +109,18 @@
             justify-content: center;
             width: 56px;
             height: 56px;
-            border-radius: 10px;
+            border-radius: 12px;
             background: #e57373;
             color: #fff;
             font-family: inherit;
             font-size: 18px;
             font-weight: 700;
-            line-height: 1;
-            letter-spacing: -0.02em;
             cursor: pointer;
-            transition: background 0.15s, transform 0.1s;
-            padding-bottom: 1px;
-            transform: none;
+            transition: transform 0.12s, filter 0.15s;
+            border: none;
         }
-        .level-icon:active { transform: scale(0.95); }
+        .level-icon:hover  { filter: brightness(1.1); }
+        .level-icon:active { transform: scale(0.94); }
         .level-icon[data-level="B1"] { color: #000; }
 
         .train-slot {
@@ -150,8 +150,8 @@
             height: 56px; padding: 0 1.6em;
             background: #8e44ad;
             color: #fff;
-            border: none; border-radius: 10px;
-            font-size: 19px; font-weight: 600;
+            border: none; border-radius: 12px;
+            font-size: 18px; font-weight: 600;
             font-family: inherit; cursor: pointer;
             transition: background 0.15s;
             white-space: nowrap;
@@ -168,7 +168,7 @@
             padding: 0;
             background: rgba(255,255,255,0.12);
             color: #fff;
-            border: none; border-radius: 10px;
+            border: none; border-radius: 12px;
             cursor: pointer;
             transition: background 0.15s, color 0.15s;
         }
@@ -177,7 +177,7 @@
         .settings-btn.home-mode { background: rgba(255,255,255,0.12); }
         .settings-btn.home-mode:hover { background: rgba(255,255,255,0.2); }
         .settings-btn svg {
-            width: 30px; height: 30px;
+            width: 28px; height: 28px;
             display: block;
         }
 
@@ -213,15 +213,14 @@
         @media (max-width: 720px) {
             .topbar { min-height: 62px; }
             .topbar-inner { min-height: 62px; padding: 0 0.6em 0 0.9em; gap: 0.3em; }
-            .brand { margin-right: 0; }
 
-            .lang-badge { min-width: 46px; height: 46px; font-size: 15px; padding: 0 0.6em; }
+            .lang-badge { min-width: 100px; height: 46px; padding: 0 1em; font-size: 14px; }
             .level-icon { width: 46px; height: 46px; font-size: 15px; }
 
-            .history-btn { height: 46px; padding: 0 1.1em; font-size: 16px; }
-            .history-btn.auth-btn { font-size: 16px; padding: 0 1.1em; }
+            .history-btn { height: 46px; padding: 0 1.1em; font-size: 15px; }
+            .history-btn.auth-btn { font-size: 15px; padding: 0 1.1em; }
             .settings-btn { width: 46px; height: 46px; }
-            .settings-btn svg { width: 24px; height: 24px; }
+            .settings-btn svg { width: 22px; height: 22px; }
 
             .timer { font-size: 14px; }
             .timer b { font-size: 18px; min-width: 2.4em; }
@@ -233,13 +232,13 @@
             .topbar { min-height: 56px; }
             .topbar-inner { min-height: 56px; padding: 0 0.5em 0 0.6em; gap: 0.25em; }
 
-            .lang-badge { min-width: 40px; height: 40px; font-size: 13px; padding: 0 0.5em; }
+            .lang-badge { min-width: 90px; height: 40px; padding: 0 0.8em; font-size: 13px; }
             .level-icon { width: 40px; height: 40px; font-size: 13px; }
 
             .history-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
             .history-btn.auth-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
             .settings-btn { width: 40px; height: 40px; }
-            .settings-btn svg { width: 22px; height: 22px; }
+            .settings-btn svg { width: 20px; height: 20px; }
 
             .timer { font-size: 12px; }
             .timer b { font-size: 15px; min-width: 2.2em; }
@@ -257,8 +256,9 @@
             .history-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
             .history-btn.auth-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
             .settings-btn { width: 38px; height: 38px; }
-            .settings-btn svg { width: 20px; height: 20px; }
-            .lang-badge, .level-icon { min-width: 36px; height: 36px; font-size: 12px; }
+            .settings-btn svg { width: 18px; height: 18px; }
+            .lang-badge { min-width: 80px; height: 36px; font-size: 12px; }
+            .level-icon { width: 36px; height: 36px; font-size: 12px; }
         }
 
         .wrapper {
@@ -275,125 +275,126 @@
             }
         }
 
-        /* ===== Главный экран ===== */
-        .home-layout {
-            display: flex;
-            align-items: stretch;
-            gap: 1.25em;
-            margin-top: 1em;
-            margin-left: 2em;
-            margin-right: 2em;
-            max-width: 960px;
-            flex-wrap: nowrap;
-        }
-        .levels-column {
+        /* ===== Главный экран — тёмный ===== */
+        .home-dark {
+            flex: 1 1 auto;
             display: flex;
             flex-direction: column;
-            gap: 0.4em;
-            flex: 0 0 auto;
-            width: 200px;
+            min-height: 0;
+            overflow: hidden;
+            background: #1b1c1d;
+            margin: -1em -1em -1em -2em;
+            padding: 0;
         }
-        .level-btn {
-            width: 100%;
-            height: 48px;
+        @media (max-width: 720px) {
+            .home-dark { margin: -0.5em -0.5em -0.5em -0.75em; }
+        }
+
+        .levels-board {
+            flex: 1 1 auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            padding: 8px;
+            min-height: 0;
+        }
+        .level-tile {
+            position: relative;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             font-family: inherit;
-            font-size: 20px;
-            font-weight: 700;
-            color: #4a4a4a;
-            background: #e0e0e0;
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #ffffff;
             cursor: pointer;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.1s, background 0.15s, color 0.15s;
+            overflow: hidden;
+            transition: transform 0.12s cubic-bezier(.2,.8,.2,1), filter 0.15s, box-shadow 0.2s, opacity 0.2s;
+            padding: 0;
+            opacity: 0.75;
         }
-        .level-btn:hover { background: #d5d5d5; }
-        .level-btn:active { transform: scale(0.98); }
-        .level-btn.active { color: #fff; }
-        .level-btn.active[data-level="B1"] { color: #000; }
-        .level-btn.disabled {
-            background: #ededed;
-            color: #bdbdbd;
+        .level-tile:hover:not(.disabled):not(.active) {
+            opacity: 1;
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .level-tile:active:not(.disabled) {
+            transform: scale(0.97);
+            transition-duration: 0.05s;
+        }
+        .level-tile.active {
+            opacity: 1;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 0 4px rgba(255,255,255,0.09);
+            z-index: 2;
+        }
+        .level-tile[data-level="A1"]:not(.disabled) { background: #e57373; }
+        .level-tile[data-level="A2"]:not(.disabled) { background: #e6a23c; }
+        .level-tile[data-level="B1"]:not(.disabled) { background: #f5c518; color: #1b1c1d; }
+        .level-tile[data-level="B2"]:not(.disabled) { background: #2ecc71; }
+        .level-tile.disabled {
+            background: #232426;
+            color: #555a60;
             cursor: not-allowed;
-            opacity: 0.7;
+            opacity: 0.45;
         }
-        .level-btn.disabled:hover { background: #ededed; }
-        .level-btn.disabled:active { transform: none; }
+        .level-tile .tile-count {
+            position: absolute;
+            bottom: 14px;
+            right: 18px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            opacity: 0.9;
+            font-variant-numeric: tabular-nums;
+        }
+        .level-tile.disabled .tile-count { opacity: 0.35; }
 
-        .start-column {
-            flex: 1 1 0;
-            min-width: 0;
+        .level-tile .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            background: rgba(255,255,255,0.45);
+            pointer-events: none;
+            animation: rippleAnim 0.6s ease-out forwards;
+        }
+        @keyframes rippleAnim {
+            to { transform: scale(3); opacity: 0; }
+        }
+
+        .start-bar {
+            flex: 0 0 auto;
+            margin: 8px;
+            border: none;
+            border-radius: 22px;
+            font-family: inherit;
+            color: #1b1c1d;
+            background: #ffffff;
+            cursor: pointer;
+            padding: 1em;
             display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .start-btn {
+            align-items: center;
+            justify-content: center;
+            min-height: 16vh;
+            transition: transform 0.1s, box-shadow 0.2s;
             position: relative;
             overflow: hidden;
-            flex: 1 1 auto;
-            min-width: 0;
-            border: none;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: clamp(18px, 5vw, 42px);
+        }
+        .start-bar:hover  { box-shadow: 0 12px 40px rgba(255,255,255,0.15); }
+        .start-bar:active { transform: scale(0.985); }
+        .start-bar .sb-label {
+            font-size: clamp(24px, 5vw, 40px);
+            font-weight: 800;
+            letter-spacing: -0.02em;
             line-height: 1.1;
-            font-weight: 700;
-            color: #fff;
-            background: #4a4a4a;
-            cursor: pointer;
-            padding: 0.6em 0.75em;
-            transition: transform 0.1s, background 0.15s;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            hyphens: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-        .start-btn:hover { background: #5a5a5a; }
-        .start-btn:active { transform: scale(0.99); }
-        .start-btn.disabled { opacity: 0.5; cursor: not-allowed; }
-        .start-btn.disabled:hover { background: #4a4a4a; }
-
-        .start-btn-label {
-            position: relative;
-            z-index: 1;
-            pointer-events: none;
-        }
-        .start-btn-counter {
-            position: relative;
-            z-index: 1;
-            pointer-events: none;
-            margin-top: 0.4em;
-            font-size: 0.55em;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            color: rgba(255,255,255,0.9);
-            font-variant-numeric: tabular-nums;
             text-align: center;
         }
 
-        @media (max-width: 900px) {
-            .home-layout { margin-left: 1em; margin-right: 1em; gap: 0.8em; }
-            .levels-column { width: 130px; }
-            .level-btn { height: 40px; font-size: 17px; }
-        }
-        @media (max-width: 640px) {
-            .home-layout { margin-left: 0.5em; margin-right: 0.5em; gap: 0.5em; }
-            .levels-column { width: 90px; gap: 0.3em; }
-            .level-btn { height: 34px; font-size: 13px; }
-        }
-        @media (max-width: 400px) {
-            .levels-column { width: 70px; }
-            .level-btn { height: 30px; font-size: 12px; }
-            .start-btn { padding: 0.5em 0.5em; font-size: clamp(14px, 4.5vw, 20px); }
-        }
-
+        /* ===== Тренировка, проверка, результаты, история, настройки — как были (светлые) ===== */
         .settings-area {
             flex: 1 1 auto; min-height: 0;
             padding: 1.25em;
@@ -518,21 +519,15 @@
             width: 100%;
             max-width: 100%;
         }
-
-        /* ===== Карточка со значением ===== */
         .face-square {
             width: 80%;
             max-width: 560px;
             min-width: 0;
             height: min(25vh, 220px);
-            aspect-ratio: auto;
             background: #ffffff;
-            border: 4px solid #ffffff;
             box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
             gap: 0.35em;
             text-align: center;
             padding: 0.75em;
@@ -541,24 +536,15 @@
             color: #212121;
             overflow: hidden;
             line-height: 1.15;
-            white-space: normal;
             word-break: normal;
             overflow-wrap: break-word;
             hyphens: auto;
             cursor: pointer;
         }
-        .face-square .fs-word {
-            font-size: 1em;
-            font-weight: 500;
-        }
+        .face-square .fs-word { font-size: 1em; font-weight: 500; }
         .face-square .fs-example {
-            font-size: 0.5em;
-            font-weight: 400;
-            color: #666;
-            line-height: 1.2;
+            font-size: 0.5em; font-weight: 400; color: #666; line-height: 1.2;
         }
-
-        /* ===== Плашка со словом ===== */
         .name-plate {
             width: 80%;
             max-width: 560px;
@@ -586,7 +572,6 @@
         }
         .ctrl-btn:hover { background: #2679b6; }
         .ctrl-btn:active { transform: scale(0.95); }
-
         .card-counter {
             display: inline-flex;
             align-items: center;
@@ -622,8 +607,7 @@
             text-align: center; padding: 0.4em;
             font-size: 13px; color: #212121; font-weight: 500;
             overflow: hidden; line-height: 1.15;
-            white-space: normal; word-break: normal;
-            overflow-wrap: break-word; hyphens: auto;
+            word-break: normal; overflow-wrap: break-word;
         }
         .check-input {
             width: 100%; height: 32px;
@@ -641,67 +625,32 @@
         .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 600; border-color: #c0392b; }
         .check-input:disabled { cursor: default; }
 
-        /* ===== Большое поле ввода в режиме "По одной" ===== */
         .check-input-one {
-            width: 80%;
-            max-width: 560px;
-            min-width: 0;
-            height: 44px;
-            font-size: 18px;
-            font-weight: 600;
+            width: 80%; max-width: 560px; min-width: 0;
+            height: 44px; font-size: 18px; font-weight: 600;
             text-align: center;
-            border: 2px solid #fff;
-            border-radius: 6px;
+            border: 2px solid #fff; border-radius: 6px;
             box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
             padding: 0 0.6em;
         }
         .check-input-one:focus { border-color: #2f8fd6; }
 
         @media (max-width: 720px) {
-            .face-square {
-                width: 90%;
-                max-width: none;
-                height: min(22vh, 180px);
-            }
-            .name-plate {
-                width: 90%;
-                max-width: none;
-                height: 46px;
-            }
-            .check-input-one {
-                width: 90%;
-                max-width: none;
-            }
+            .face-square { width: 90%; max-width: none; height: min(22vh, 180px); }
+            .name-plate { width: 90%; max-width: none; height: 46px; }
+            .check-input-one { width: 90%; max-width: none; }
         }
-
         @media (max-width: 560px) {
             .check-area { padding: 0.75em; }
             .check-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
             .check-img { font-size: 11px; padding: 0.3em; }
             .check-input { height: 30px; font-size: 15px; }
-
             .thumbs { padding: 0.35em; gap: 0.35em; }
             .thumb-img { width: 44px; height: 36px; font-size: 8px; }
             .thumb-name { font-size: 9px; max-width: 52px; }
-
-            .face-square {
-                width: 90%;
-                max-width: none;
-                height: min(20vh, 150px);
-                font-size: clamp(20px, 5vw, 28px);
-            }
-            .name-plate {
-                width: 90%;
-                max-width: none;
-                height: 40px;
-                font-size: clamp(18px, 4.5vw, 26px);
-            }
-            .check-input-one {
-                width: 90%;
-                max-width: none;
-                height: 42px;
-                font-size: 17px;
-            }
+            .face-square { width: 90%; max-width: none; height: min(20vh, 150px); font-size: clamp(20px, 5vw, 28px); }
+            .name-plate { width: 90%; max-width: none; height: 40px; font-size: clamp(18px, 4.5vw, 26px); }
+            .check-input-one { width: 90%; max-width: none; height: 42px; font-size: 17px; }
         }
 
         .results-area {
@@ -884,13 +833,13 @@
     </style>
 </head>
 <body>
-    <div class="stage">
+    <div class="stage" id="stage">
         <nav class="topbar">
             <div class="topbar-inner" id="topbarInner">
-                <a href="#/home" class="brand" title="Home" id="homeBtn">
-                    <span class="lang-badge" id="homeLangBadge">EN</span>
-                    <span class="level-icon" id="homeLevelIcon">A1</span>
-                </a>
+                <div class="brand">
+                    <button class="lang-badge" id="homeLangBadge">English</button>
+                    <button class="level-icon" id="homeLevelIcon">A1</button>
+                </div>
 
                 <div class="train-slot" id="trainSlot" style="display:none">
                     <div class="timer" id="timerWrap">Осталось: <b id="timerValue">1:00</b></div>
