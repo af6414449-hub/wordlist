@@ -135,8 +135,8 @@ const levelColors = {
     A2: '#e6a23c',
     B1: '#f5c518',
     B2: '#2ecc71',
-    C1: '#e0e0e0',
-    C2: '#e0e0e0',
+    C1: '#3f4145',
+    C2: '#3f4145',
 };
 
 const BANKS = {
@@ -174,6 +174,7 @@ let sessionWords = [];
 let userAnswers  = [];
 
 const view           = document.getElementById('view');
+const stageEl        = document.getElementById('stage');
 const trainSlot      = document.getElementById('trainSlot');
 const finishBtn      = document.getElementById('finishBtn');
 const timerWrap      = document.getElementById('timerWrap');
@@ -193,13 +194,14 @@ function inTrainingMode() {
 
 function updateHeaderBadges() {
     if (homeLangBadge) {
-        homeLangBadge.textContent = langShort(currentLanguage);
+        homeLangBadge.textContent = langLabel(currentLanguage);
         homeLangBadge.style.background = langColor(currentLanguage);
     }
     if (homeLevelIcon) {
         homeLevelIcon.textContent = currentLevel;
         homeLevelIcon.dataset.level = currentLevel;
         homeLevelIcon.style.background = levelColors[currentLevel] || '#e0e0e0';
+        homeLevelIcon.style.color = (currentLevel === 'B1') ? '#000' : '#fff';
     }
 }
 
@@ -227,6 +229,16 @@ homeLangBadge.addEventListener('click', (e) => {
         const available = levels.filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
         if (available.length) currentLevel = available[0].code;
     }
+
+    // Лёгкая анимация плашки
+    homeLangBadge.animate(
+        [
+            { transform: 'scale(1)' },
+            { transform: 'scale(0.92)' },
+            { transform: 'scale(1)' }
+        ],
+        { duration: 220, easing: 'ease-out' }
+    );
 
     refreshCurrentScreen();
 });
@@ -525,6 +537,11 @@ function updateHeader() {
 
     historyBtn.textContent = (screen === 'history' || screen === 'history-entry') ? 'Назад' : 'Результаты';
 
+    // Тёмный фон сцены только на главной
+    if (stageEl) {
+        stageEl.classList.toggle('dark-home', screen === 'home');
+    }
+
     if (screen === 'settings') {
         settingsBtn.classList.add('home-mode');
         settingsBtn.innerHTML = `
@@ -618,14 +635,25 @@ async function updateProgressBar() {
     const prog = await loadProgress();
     const learned = prog.learned.length;
 
-    const homeProgress = document.getElementById('homeProgress');
-    if (homeProgress) {
-        if (total === 0) {
-            homeProgress.textContent = '— / —';
-        } else {
-            homeProgress.textContent = `${learned} / ${total}`;
-        }
+    const hp = document.querySelector('.level-tile[data-level="' + currentLevel + '"] .tile-count');
+    if (hp) {
+        if (total === 0) hp.textContent = '—';
+        else hp.textContent = `${learned} / ${total}`;
     }
+
+    // Обновляем счётчики во всех плитках (для неактивных — 0 / N или N / N)
+    document.querySelectorAll('.level-tile').forEach(tile => {
+        const lvl = tile.dataset.level;
+        const span = tile.querySelector('.tile-count');
+        if (!span) return;
+        if (!hasBankInLang(currentLanguage, lvl)) {
+            span.textContent = '—';
+        } else if (lvl === currentLevel) {
+            const b = getBank(lvl) || [];
+            span.textContent = `${learned} / ${b.length}`;
+        }
+        // остальные уровни остаются с тем, что было
+    });
 
     updateHeaderBadges();
 }
@@ -637,57 +665,70 @@ function renderHome() {
         if (first) currentLevel = first.code;
     }
 
-    const levelsHtml = levels.map(lvl => {
+    const tilesHtml = levels.map(lvl => {
         const bankExists = hasBankInLang(currentLanguage, lvl.code);
         const isActive = lvl.code === currentLevel && bankExists;
+        const disabled = !bankExists;
 
-        let cls = 'level-btn';
-        let style = '';
+        const cls = ['level-tile'];
+        if (isActive) cls.push('active');
+        if (disabled) cls.push('disabled');
 
-        if (!bankExists) {
-            cls += ' disabled';
-        } else if (isActive) {
-            cls += ' active';
-            style = `background:${levelColors[lvl.code] || '#e0e0e0'};`;
+        let countText = '—';
+        if (bankExists) {
+            const b = BANKS[currentLanguage][lvl.code];
+            countText = (lvl.code === currentLevel ? '0' : '0') + ' / ' + b.length;
         }
 
-        const disabled = bankExists ? '' : 'disabled';
-        return `<button class="${cls}" data-level="${lvl.code}" style="${style}" ${disabled}>${lvl.code}</button>`;
+        return `<button class="${cls.join(' ')}" data-level="${lvl.code}" ${disabled ? 'disabled' : ''}>
+            ${lvl.code}
+            <span class="tile-count">${countText}</span>
+        </button>`;
     }).join('');
 
-    const canStart = hasBankInLang(currentLanguage, currentLevel);
-    const startCls = canStart ? 'start-btn' : 'start-btn disabled';
-
     view.innerHTML = `
-        <div class="home-layout">
-            <div class="levels-column">${levelsHtml}</div>
-            <div class="start-column">
-                <button class="${startCls}" id="startBtn">
-                    <span class="start-btn-label">Начать тренировку</span>
-                    <span class="start-btn-counter" id="homeProgress">— / —</span>
-                </button>
+        <div class="home-dark">
+            <div class="levels-board" id="levelsBoard">
+                ${tilesHtml}
             </div>
+            <button class="start-bar" id="startBtn">
+                <span class="sb-label">Начать тренировку</span>
+            </button>
         </div>
     `;
 
-    const hp = document.getElementById('homeProgress');
-    if (hp) {
-        const bank = getBank(currentLevel) || [];
-        if (bank.length) hp.textContent = `0 / ${bank.length}`;
-    }
-
-    view.querySelectorAll('.level-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (btn.disabled) return;
-            const lvl = btn.dataset.level;
+    // Клик по плитке уровня
+    view.querySelectorAll('.level-tile').forEach(tile => {
+        tile.addEventListener('click', () => {
+            if (tile.disabled || tile.classList.contains('disabled')) return;
+            const lvl = tile.dataset.level;
             if (lvl === currentLevel) return;
             currentLevel = lvl;
-            renderHome();
-            updateProgressBar();
+            refreshCurrentScreen();
         });
     });
 
-    document.getElementById('startBtn').addEventListener('click', () => {
+    // Ripple
+    view.querySelectorAll('.level-tile').forEach(tile => {
+        tile.addEventListener('click', (e) => {
+            if (tile.disabled || tile.classList.contains('disabled')) return;
+            const rect = tile.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = (e.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2;
+            const y = (e.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2;
+            const ripple = document.createElement('span');
+            ripple.className = 'ripple';
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            tile.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+
+    // Кнопка "Начать тренировку"
+    const startBtn = document.getElementById('startBtn');
+    startBtn.addEventListener('click', () => {
         startSession();
     });
 
@@ -719,7 +760,7 @@ async function startSession() {
     userAnswers  = sessionWords.map(() => '');
     currentPerson = 0;
     screen = 'train';
-    renderCheckOne._focusedOnce = false;   // сброс флага
+    renderCheckOne._focusedOnce = false;
     renderTrain();
     startTimer();
 }
@@ -887,7 +928,7 @@ function goToCheck() {
     userAnswers = sessionWords.map(item => buildHintMask(item.en));
 
     currentPerson = 0;
-    renderCheckOne._focusedOnce = false;   // сброс флага
+    renderCheckOne._focusedOnce = false;
     renderCheck();
 }
 
@@ -1034,7 +1075,6 @@ function renderCheckOne() {
             });
         }
 
-        // Автофокус только при первом открытии проверки.
         if (!renderCheckOne._focusedOnce) {
             renderCheckOne._focusedOnce = true;
             try { inp.focus({ preventScroll: true }); } catch (_) {}
@@ -1933,7 +1973,7 @@ function fitFontSize(el, max, min) {
 }
 
 /* ===== Кнопка Домой ===== */
-document.getElementById('homeBtn').addEventListener('click', (e) => {
+document.getElementById('homeBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     stopTimer();
     screen = 'home';
