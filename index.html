@@ -101,12 +101,20 @@
         .lang-badge:hover  { filter: brightness(1.1); }
         .lang-badge:active { transform: scale(0.94); }
 
+        /* Увеличенная плашка для китайского */
+        .lang-badge.lang-zh {
+            font-size: 26px;
+            min-width: 160px;
+            letter-spacing: 0.05em;
+        }
+
         .level-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 56px;
+            min-width: 56px;
             height: 56px;
+            padding: 0 0.8em;
             border-radius: 12px;
             background: #e57373;
             color: #fff;
@@ -114,12 +122,18 @@
             font-size: 18px;
             font-weight: 700;
             cursor: pointer;
-            transition: transform 0.12s, filter 0.15s;
+            transition: transform 0.12s, filter 0.15s, min-width 0.15s;
             border: none;
+            white-space: nowrap;
         }
         .level-icon:hover  { filter: brightness(1.1); }
         .level-icon:active { transform: scale(0.94); }
         .level-icon[data-level="B1"] { color: #000; }
+        .level-icon.level-zh {
+            font-size: 16px;
+            min-width: 130px;
+            padding: 0 1em;
+        }
 
         .train-slot {
             display: flex; align-items: center; gap: 0.6em;
@@ -213,7 +227,9 @@
             .topbar-inner { min-height: 62px; padding: 0 0.6em 0 0.9em; gap: 0.3em; }
 
             .lang-badge { min-width: 100px; height: 46px; padding: 0 1em; font-size: 14px; }
-            .level-icon { width: 46px; height: 46px; font-size: 15px; }
+            .lang-badge.lang-zh { font-size: 20px; min-width: 120px; }
+            .level-icon { height: 46px; font-size: 15px; min-width: 46px; }
+            .level-icon.level-zh { font-size: 13px; min-width: 100px; }
 
             .history-btn { height: 46px; padding: 0 1.1em; font-size: 15px; }
             .history-btn.auth-btn { font-size: 15px; padding: 0 1.1em; }
@@ -231,7 +247,9 @@
             .topbar-inner { min-height: 56px; padding: 0 0.5em 0 0.6em; gap: 0.25em; }
 
             .lang-badge { min-width: 90px; height: 40px; padding: 0 0.8em; font-size: 13px; }
-            .level-icon { width: 40px; height: 40px; font-size: 13px; }
+            .lang-badge.lang-zh { font-size: 17px; min-width: 100px; }
+            .level-icon { height: 40px; font-size: 13px; min-width: 40px; padding: 0 0.6em; }
+            .level-icon.level-zh { font-size: 11px; min-width: 86px; padding: 0 0.7em; }
 
             .history-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
             .history-btn.auth-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
@@ -256,7 +274,9 @@
             .settings-btn { width: 38px; height: 38px; }
             .settings-btn svg { width: 18px; height: 18px; }
             .lang-badge { min-width: 80px; height: 36px; font-size: 12px; }
-            .level-icon { width: 36px; height: 36px; font-size: 12px; }
+            .lang-badge.lang-zh { font-size: 15px; min-width: 90px; }
+            .level-icon { height: 36px; font-size: 12px; min-width: 36px; }
+            .level-icon.level-zh { font-size: 10px; min-width: 78px; }
         }
 
         .wrapper {
@@ -340,12 +360,35 @@
         .level-tile[data-level="A2"]:not(.disabled) { background: #e6a23c; }
         .level-tile[data-level="B1"]:not(.disabled) { background: #f5c518; color: #1b1c1d; }
         .level-tile[data-level="B2"]:not(.disabled) { background: #2ecc71; }
+
+        /* Китайские плитки */
+        .level-tile[data-level="HSK1_ZH"]:not(.disabled) { background: #c0392b; }
+        .level-tile[data-level="HSK1_RU"]:not(.disabled) { background: #8e44ad; }
+
         .level-tile.disabled {
             background: #232426;
             color: #555a60;
             cursor: not-allowed;
             opacity: 0.35;
         }
+
+        /* Уменьшенный шрифт для длинных надписей HSK */
+        .level-tile.tile-zh {
+            font-size: clamp(20px, 3.6vw, 38px);
+            letter-spacing: 0;
+            flex-direction: column;
+            gap: 0.15em;
+        }
+        .level-tile.tile-zh .tile-zh-line1 {
+            font-size: 0.75em;
+            font-weight: 700;
+            opacity: 0.85;
+        }
+        .level-tile.tile-zh .tile-zh-line2 {
+            font-size: 1.15em;
+            font-weight: 800;
+        }
+
         .level-tile .tile-count {
             position: absolute;
             bottom: 14px;
@@ -474,70 +517,88 @@
         .size-btn:hover { background: #3498db; }
         .size-btn:active { transform: scale(0.97); }
 
-        /* ===== Тренировка / проверка ===== */
+        /* ===== Тренировка / проверка (в стиле первой страницы) ===== */
         .train-screen {
-            display: flex; flex-direction: column; gap: 0.5em;
+            display: flex; flex-direction: column; gap: 10px;
             flex: 1 1 auto; min-height: 0;
         }
         .thumbs {
-            flex: 0 0 auto; display: flex; gap: 0.5em; padding: 0.5em;
-            background: #fff; border: 1px solid #e0e0e0; border-radius: 4px;
+            flex: 0 0 auto;
+            display: flex; gap: 8px; padding: 8px;
+            background: #1b1c1d;
+            border-radius: 16px;
             overflow-x: auto; overflow-y: hidden;
+            scrollbar-width: thin;
         }
+        .thumbs::-webkit-scrollbar { height: 6px; }
+        .thumbs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
         .thumb {
             flex: 0 0 auto; display: flex; flex-direction: column;
-            align-items: center; gap: 0.15em; cursor: pointer;
+            align-items: center; gap: 0.2em; cursor: pointer;
         }
         .thumb-img {
-            width: 56px; height: 44px; background: #ffffff;
-            border: 1px solid #bdbdbd; transition: border 0.15s, box-shadow 0.15s;
+            width: 62px; height: 48px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.85);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            transition: border 0.15s, box-shadow 0.15s, background 0.15s;
             display: flex; align-items: center; justify-content: center;
-            font-size: 9px; color: #555; text-align: center; padding: 0 2px;
+            font-size: 10px; text-align: center;
+            padding: 0 4px;
             overflow: hidden; line-height: 1.1;
         }
         .thumb.active .thumb-img {
-            border: 2px solid #e57373;
-            box-shadow: 0 0 0 2px rgba(229, 115, 115, 0.4);
+            border: 2px solid #2ecc71;
+            box-shadow: 0 0 0 2px rgba(46,204,113,0.25);
+            background: rgba(46,204,113,0.12);
+            color: #fff;
         }
         .thumb-name {
-            background: #f5f5f5; border-radius: 3px; padding: 0 0.4em;
-            font-size: 10px; color: #212121; line-height: 1.4;
-            max-width: 64px; overflow: hidden; text-overflow: ellipsis;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.75);
+            border-radius: 4px;
+            padding: 0 0.4em;
+            font-size: 10px;
+            line-height: 1.4;
+            max-width: 70px; overflow: hidden; text-overflow: ellipsis;
             white-space: nowrap;
         }
+
         .train-area {
             flex: 1 1 auto; min-height: 0;
             display: flex; align-items: flex-start; justify-content: center;
-            padding: 0.75em 1em; background: #f5f1e8;
-            border: 1px solid #ddd5c4; border-radius: 4px;
+            padding: 1em;
+            background: #1b1c1d;
+            border-radius: 16px;
             overflow: auto;
         }
-        .train-area.single-check {
-            background: #ffffff;
-            border-color: #ffffff;
-        }
+
         .train-main {
             display: flex; flex-direction: column; align-items: center;
             justify-content: flex-start;
             padding-top: 0.25em;
-            gap: 0.6em; min-height: 0;
+            gap: 0.7em; min-height: 0;
             width: 100%;
             max-width: 100%;
         }
+
         .face-square {
             width: 80%;
             max-width: 560px;
             min-width: 0;
-            height: min(25vh, 220px);
+            height: min(28vh, 260px);
             background: #ffffff;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+            border-radius: 20px;
+            box-shadow: 0 14px 36px rgba(0,0,0,0.35);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             gap: 0.35em;
             text-align: center;
-            padding: 0.75em;
-            font-size: clamp(24px, 3.2vw + 1vh, 34px);
-            font-weight: 500;
+            padding: 0.9em;
+            font-size: clamp(26px, 3.6vw + 1vh, 40px);
+            font-weight: 600;
             color: #212121;
             overflow: hidden;
             line-height: 1.15;
@@ -546,46 +607,66 @@
             hyphens: auto;
             cursor: pointer;
         }
-        .face-square .fs-word { font-size: 1em; font-weight: 500; }
-        .face-square .fs-example {
-            font-size: 0.5em; font-weight: 400; color: #666; line-height: 1.2;
+        .face-square .fs-word {
+            font-size: 1em;
+            font-weight: 600;
         }
+        .face-square .fs-example {
+            font-size: 0.5em; font-weight: 400; color: #666; line-height: 1.25;
+        }
+        .face-square .fs-zh {
+            font-size: 1.4em;
+            font-weight: 600;
+        }
+        .face-square .fs-py {
+            font-size: 0.55em;
+            font-weight: 500;
+            color: #777;
+            letter-spacing: 0.02em;
+        }
+
         .name-plate {
             width: 80%;
             max-width: 560px;
             min-width: 0;
-            height: 52px;
+            height: 56px;
             padding: 0 1em;
             display: flex; align-items: center; justify-content: center;
-            background: #ffffff; border-radius: 8px; text-align: center;
+            background: #ffffff;
+            border-radius: 14px;
+            text-align: center;
             font-size: clamp(22px, 2.4vw + 1vh, 34px);
-            font-weight: 500;
-            color: #212121; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            font-weight: 600;
+            color: #212121;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.3);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: clip;
             line-height: 1.1;
             cursor: pointer;
         }
-        .train-controls { display: flex; gap: 0.5em; align-items: center; }
+
+        .train-controls { display: flex; gap: 8px; align-items: center; }
         .ctrl-btn {
-            width: 56px; height: 44px; border: none; border-radius: 4px;
-            background: #2f8fd6; color: #fff; font-size: 20px;
+            width: 60px; height: 48px; border: none; border-radius: 12px;
+            background: rgba(255,255,255,0.1); color: #fff;
+            font-size: 20px;
             cursor: pointer; display: inline-flex; align-items: center;
             justify-content: center; font-family: inherit;
             transition: background 0.15s, transform 0.1s;
         }
-        .ctrl-btn:hover { background: #2679b6; }
+        .ctrl-btn:hover { background: rgba(255,255,255,0.18); }
         .ctrl-btn:active { transform: scale(0.95); }
+
         .card-counter {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 64px;
-            height: 44px;
-            padding: 0 0.6em;
-            background: rgba(0,0,0,0.55);
-            border-radius: 4px;
+            min-width: 72px;
+            height: 48px;
+            padding: 0 0.8em;
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
             color: #fff;
             font-size: 16px;
             font-weight: 700;
@@ -593,69 +674,99 @@
             letter-spacing: 0.02em;
         }
 
+        /* Проверка «все» */
         .check-area {
             flex: 1 1 auto; min-height: 0;
-            padding: 1.5em;
-            background: #f5f1e8; border: 1px solid #ddd5c4;
-            border-radius: 4px; overflow: auto;
+            padding: 1em;
+            background: #1b1c1d;
+            border-radius: 16px;
+            overflow: auto;
         }
         .check-grid {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 0.75em; align-content: start;
+            gap: 10px; align-content: start;
         }
-        .check-cell { display: flex; flex-direction: column; gap: 0.25em; min-width: 0; }
+        .check-cell {
+            display: flex; flex-direction: column; gap: 6px; min-width: 0;
+            padding: 8px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            transition: background 0.15s;
+        }
+        .check-cell.current { background: rgba(46,204,113,0.12); }
         .check-img {
-            width: 100%; aspect-ratio: 1 / 0.75;
-            background: #ffffff; border: 1px solid #fff;
+            width: 100%; aspect-ratio: 1 / 0.72;
+            background: #ffffff;
+            border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
             text-align: center; padding: 0.4em;
-            font-size: 13px; color: #212121; font-weight: 500;
+            font-size: 13px; color: #212121; font-weight: 600;
             overflow: hidden; line-height: 1.15;
             word-break: normal; overflow-wrap: break-word;
         }
         .check-input {
-            width: 100%; height: 32px;
-            border: 1px solid #fff; border-radius: 3px;
-            background: #ffffff; font-family: inherit;
-            font-size: 16px; padding: 0 0.4em;
-            text-align: center; color: #212121; outline: none;
+            width: 100%; height: 34px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-family: inherit;
+            font-size: 16px; padding: 0 0.5em;
+            text-align: center; outline: none;
+            transition: border 0.15s, background 0.15s;
         }
-        .check-input:focus { border-color: #2f8fd6; }
+        .check-input::placeholder { color: rgba(255,255,255,0.3); }
+        .check-input:focus {
+            border-color: #2ecc71;
+            background: rgba(46,204,113,0.08);
+        }
         .check-cell.current .check-input {
-            background: #ffe600; color: #000; font-weight: 600;
+            background: #ffe600; color: #000; font-weight: 700;
+            border-color: #ffe600;
         }
-        .check-input.correct { background: #2ecc71; color: #fff; font-weight: 600; border-color: #27ae60; }
-        .check-input.close   { background: #f39c12; color: #fff; font-weight: 600; border-color: #d68910; }
-        .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 600; border-color: #c0392b; }
+        .check-input.correct { background: #2ecc71; color: #fff; font-weight: 700; border-color: #27ae60; }
+        .check-input.close   { background: #f39c12; color: #fff; font-weight: 700; border-color: #d68910; }
+        .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 700; border-color: #c0392b; }
         .check-input:disabled { cursor: default; }
 
+        /* Проверка «по одной» */
         .check-input-one {
             width: 80%; max-width: 560px; min-width: 0;
-            height: 44px; font-size: 18px; font-weight: 600;
+            height: 52px; font-size: 20px; font-weight: 700;
             text-align: center;
-            border: 2px solid #fff; border-radius: 6px;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
-            padding: 0 0.6em;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            padding: 0 0.7em;
+            outline: none;
+            transition: border 0.15s, background 0.15s;
         }
-        .check-input-one:focus { border-color: #2f8fd6; }
+        .check-input-one::placeholder { color: rgba(255,255,255,0.3); }
+        .check-input-one:focus {
+            border-color: #2ecc71;
+            background: rgba(46,204,113,0.08);
+        }
 
         @media (max-width: 720px) {
-            .face-square { width: 90%; max-width: none; height: min(22vh, 180px); }
-            .name-plate { width: 90%; max-width: none; height: 46px; }
+            .face-square { width: 90%; max-width: none; height: min(24vh, 200px); }
+            .name-plate { width: 90%; max-width: none; height: 50px; }
             .check-input-one { width: 90%; max-width: none; }
         }
         @media (max-width: 560px) {
-            .check-area { padding: 0.75em; }
-            .check-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
+            .check-area { padding: 0.6em; }
+            .check-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
             .check-img { font-size: 11px; padding: 0.3em; }
             .check-input { height: 30px; font-size: 15px; }
-            .thumbs { padding: 0.35em; gap: 0.35em; }
-            .thumb-img { width: 44px; height: 36px; font-size: 8px; }
-            .thumb-name { font-size: 9px; max-width: 52px; }
-            .face-square { width: 90%; max-width: none; height: min(20vh, 150px); font-size: clamp(20px, 5vw, 28px); }
-            .name-plate { width: 90%; max-width: none; height: 40px; font-size: clamp(18px, 4.5vw, 26px); }
-            .check-input-one { width: 90%; max-width: none; height: 42px; font-size: 17px; }
+            .thumbs { padding: 6px; gap: 6px; }
+            .thumb-img { width: 48px; height: 38px; font-size: 9px; }
+            .thumb-name { font-size: 9px; max-width: 56px; }
+            .face-square { width: 90%; max-width: none; height: min(22vh, 170px); font-size: clamp(22px, 5vw, 30px); }
+            .name-plate { width: 90%; max-width: none; height: 44px; font-size: clamp(18px, 4.5vw, 26px); }
+            .check-input-one { width: 90%; max-width: none; height: 46px; font-size: 18px; }
+            .ctrl-btn { width: 52px; height: 44px; font-size: 18px; }
+            .card-counter { height: 44px; min-width: 64px; font-size: 15px; }
         }
 
         /* ===== Результаты ===== */
