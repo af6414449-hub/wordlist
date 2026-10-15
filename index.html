@@ -1,427 +1,917 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wordlist</title>
-<style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-    html, body {
-        margin: 0; padding: 0;
-        background: #1b1c1d;
-        color: #fff;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 14px; line-height: 1.5;
-        height: 100%;
-        overflow: hidden;
-    }
-    body { user-select: none; }
-
-    .stage {
-        position: fixed;
-        top: 0; left: 50%;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 1100px;
-        height: 100vh;
-        height: 100dvh;
-        background: #1b1c1d;
-        box-shadow: 0 0 60px rgba(0,0,0,0.7);
-        display: flex; flex-direction: column;
-        overflow: hidden;
-    }
-
-    /* ===== Шапка ===== */
-    .topbar {
-        min-height: 72px; flex: 0 0 auto;
-        background: #1b1c1d;
-        display: flex; align-items: center;
-        padding: 0 1em 0 1.5em;
-        gap: 0.5em;
-    }
-    .brand { display: flex; align-items: center; gap: 0.5em; }
-
-    .lang-badge {
-        display: inline-flex; align-items: center; justify-content: center;
-        height: 56px;
-        min-width: 130px;
-        padding: 0 1.2em;
-        border-radius: 12px;
-        background: #6b8cae; color: #fff;
-        font-family: inherit;
-        font-size: 17px; font-weight: 700;
-        letter-spacing: 0.02em;
-        cursor: pointer;
-        transition: transform 0.12s, filter 0.15s;
-        border: none;
-    }
-    .lang-badge:hover  { filter: brightness(1.1); }
-    .lang-badge:active { transform: scale(0.94); }
-
-    .level-icon {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 56px; height: 56px; border-radius: 12px;
-        background: #e57373; color: #fff;
-        font-family: inherit;
-        font-size: 18px; font-weight: 700;
-        cursor: pointer;
-        transition: transform 0.12s, filter 0.15s;
-        border: none;
-    }
-    .level-icon:hover  { filter: brightness(1.1); }
-    .level-icon:active { transform: scale(0.94); }
-
-    .topbar .right { margin-left: auto; display: flex; gap: 0.5em; align-items: center; }
-
-    .history-btn {
-        height: 56px; padding: 0 1.6em;
-        background: #8e44ad; color: #fff;
-        border: none; border-radius: 12px;
-        font-size: 18px; font-weight: 600; font-family: inherit;
-        cursor: pointer;
-        transition: transform 0.1s, filter 0.15s;
-    }
-    .history-btn:hover  { filter: brightness(1.1); }
-    .history-btn:active { transform: scale(0.96); }
-
-    .settings-btn {
-        width: 56px; height: 56px;
-        background: rgba(255,255,255,0.12); color: #fff;
-        border: none; border-radius: 12px;
-        display: inline-flex; align-items: center; justify-content: center;
-        cursor: pointer;
-        transition: transform 0.12s, background 0.15s;
-    }
-    .settings-btn:hover  { background: rgba(255,255,255,0.2); }
-    .settings-btn:active { transform: rotate(45deg) scale(0.92); }
-    .settings-btn svg { width: 28px; height: 28px; }
-
-    /* ===== Контент ===== */
-    .wrapper {
-        flex: 1 1 auto;
-        display: flex; flex-direction: column;
-        min-height: 0;
-        overflow: hidden;
-    }
-
-    .levels-board {
-        flex: 1 1 auto;
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(3, 1fr);
-        gap: 8px;
-        padding: 8px;
-        min-height: 0;
-    }
-    .level-tile {
-        position: relative;
-        border: none;
-        border-radius: 20px;
-        font-family: inherit;
-        font-size: clamp(48px, 12vw, 96px);
-        font-weight: 800;
-        letter-spacing: -0.04em;
-        color: #ffffff;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        transition: transform 0.12s cubic-bezier(.2,.8,.2,1), filter 0.15s, box-shadow 0.2s, opacity 0.2s;
-        -webkit-tap-highlight-color: transparent;
-        padding: 0;
-        opacity: 0.75;
-    }
-
-    /* Неактивные уровни — приглушены, но читаемы */
-    .level-tile:hover:not(.disabled):not(.active) {
-        opacity: 1;
-        filter: brightness(1.05);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    }
-    .level-tile:active:not(.disabled) {
-        transform: scale(0.97);
-        transition-duration: 0.05s;
-    }
-
-    /* Активный — яркий и слегка увеличен, без налезания */
-    .level-tile.active {
-        opacity: 1;
-        box-shadow: 0 10px 28px rgba(0,0,0,0.45), 0 0 0 4px rgba(255,255,255,0.09);
-        z-index: 2;
-    }
-
-    .level-tile[data-level="A1"]:not(.disabled) { background: #e57373; }
-    .level-tile[data-level="A2"]:not(.disabled) { background: #e6a23c; }
-    .level-tile[data-level="B1"]:not(.disabled) { background: #f5c518; color: #1b1c1d; }
-    .level-tile[data-level="B2"]:not(.disabled) { background: #2ecc71; }
-
-    .level-tile.disabled {
-        background: #232426;
-        color: #555a60;
-        cursor: not-allowed;
-        opacity: 0.45;
-    }
-
-    .level-tile .tile-count {
-        position: absolute;
-        bottom: 14px;
-        right: 18px;
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        opacity: 0.9;
-        font-variant-numeric: tabular-nums;
-    }
-    .level-tile.disabled .tile-count { opacity: 0.35; }
-
-    .level-tile .ripple {
-        position: absolute;
-        border-radius: 50%;
-        transform: scale(0);
-        background: rgba(255,255,255,0.45);
-        pointer-events: none;
-        animation: rippleAnim 0.6s ease-out forwards;
-    }
-    @keyframes rippleAnim {
-        to { transform: scale(3); opacity: 0; }
-    }
-
-    /* ===== Кнопка "Начать тренировку" ===== */
-    .start-bar {
-        flex: 0 0 auto;
-        margin: 8px;
-        border: none;
-        border-radius: 22px;
-        font-family: inherit;
-        color: #1b1c1d;
-        background: #ffffff;
-        cursor: pointer;
-        padding: 1em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 16vh;
-        transition: transform 0.1s, box-shadow 0.2s;
-        position: relative;
-        overflow: hidden;
-    }
-    .start-bar:hover  { box-shadow: 0 12px 40px rgba(255,255,255,0.15); }
-    .start-bar:active { transform: scale(0.985); }
-
-    .start-bar .sb-label {
-        font-size: clamp(24px, 5vw, 40px);
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        line-height: 1.1;
-        text-align: center;
-    }
-
-    /* ===== Мобильные ===== */
-    @media (max-width: 720px) {
-        .topbar { min-height: 62px; padding: 0 0.6em 0 0.9em; }
-        .lang-badge { min-width: 100px; height: 46px; padding: 0 1em; font-size: 14px; }
-        .level-icon { width: 46px; height: 46px; font-size: 15px; }
-        .history-btn { height: 46px; padding: 0 1.1em; font-size: 15px; }
-        .settings-btn { width: 46px; height: 46px; }
-        .settings-btn svg { width: 22px; height: 22px; }
-
-        .levels-board { gap: 6px; padding: 6px; }
-        .start-bar { min-height: 20vh; border-radius: 18px; margin: 6px; }
-    }
-
-    @media (max-height: 500px) and (orientation: landscape) {
-        .levels-board {
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Wordlist — тренировка словарного запаса">
+    <meta name="author" content="Wordlist">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wordlist</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
-        .start-bar {
-            flex: 0 0 34%;
+
+        html, body {
+            margin: 0; padding: 0;
+            background: #ffffff;
+            color: #212121;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px; line-height: 1.5;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        input, textarea, .check-input, .results-table td, .history-table td {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.78);
+            z-index: 0; pointer-events: none;
+        }
+
+        .stage {
+            position: fixed;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 1100px;
+            height: 100vh;
+            height: 100dvh;
+            background: #ffffff;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .stage.dark-home { background: #1b1c1d; }
+
+        /* ===== Шапка ===== */
+        .topbar {
+            min-height: 72px; flex: 0 0 auto;
+            background: #1b1c1d; color: rgba(255,255,255,0.9);
+            z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .topbar-inner {
+            position: relative;
+            min-height: 72px;
+            padding: 0 1em 0 1.5em;
+            display: flex; align-items: center; gap: 0.5em;
+            flex-wrap: wrap;
+            row-gap: 0;
+        }
+        .brand {
+            display: flex; align-items: center;
+            gap: 0.5em;
+            margin-right: 0.25em;
+            flex: 0 0 auto;
+        }
+        .lang-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 56px;
+            min-width: 130px;
+            padding: 0 1.2em;
+            border-radius: 12px;
+            background: #6b8cae;
+            color: #fff;
+            font-family: inherit;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: transform 0.12s, filter 0.15s;
+            border: none;
+        }
+        .lang-badge:hover  { filter: brightness(1.1); }
+        .lang-badge:active { transform: scale(0.94); }
+
+        .level-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            background: #e57373;
+            color: #fff;
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.12s, filter 0.15s;
+            border: none;
+        }
+        .level-icon:hover  { filter: brightness(1.1); }
+        .level-icon:active { transform: scale(0.94); }
+        .level-icon[data-level="B1"] { color: #000; }
+
+        .train-slot {
+            display: flex; align-items: center; gap: 0.6em;
+            margin-left: 0.5em; flex-wrap: wrap;
+            min-width: 0;
+        }
+        .timer {
+            color: rgba(255,255,255,0.75);
+            font-size: 17px; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .timer b {
+            color: #fff; font-size: 21px; margin-left: 0.25em;
+            font-variant-numeric: tabular-nums;
+            display: inline-block; min-width: 2.6em; text-align: right;
+        }
+
+        .right {
+            margin-left: auto;
+            display: flex; align-items: center; gap: 0.5em;
+            flex: 0 0 auto;
+        }
+
+        .history-btn {
+            display: inline-flex; align-items: center; gap: 0.4em;
+            height: 56px; padding: 0 1.6em;
+            background: #8e44ad;
+            color: #fff;
+            border: none; border-radius: 12px;
+            font-size: 18px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .history-btn:hover { background: #7d3c98; }
+        .history-btn.active { background: #6c3483; }
+
+        .history-btn.auth-btn { background: #2f8fd6; }
+        .history-btn.auth-btn:hover { background: #2679b6; }
+
+        .settings-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 56px; height: 56px;
+            padding: 0;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: none; border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .settings-btn:hover { background: rgba(255,255,255,0.2); }
+        .settings-btn.active { background: rgba(255,255,255,0.25); }
+        .settings-btn.home-mode { background: rgba(255,255,255,0.12); }
+        .settings-btn.home-mode:hover { background: rgba(255,255,255,0.2); }
+        .settings-btn svg {
+            width: 28px; height: 28px;
+            display: block;
+        }
+
+        .center-slot {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            align-items: center;
+            gap: 0.6em;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .center-slot > * { pointer-events: auto; }
+
+        .finish-btn {
+            background: #2ecc71; color: #fff; border: none; border-radius: 10px;
+            padding: 0.7em 2em; font-size: 19px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .finish-btn:hover { background: #27ae60; }
+        .finish-btn:active { transform: scale(0.97); }
+        .finish-btn.continue { background: #5dade2; }
+        .finish-btn.continue:hover { background: #3498db; }
+
+        .topbar-inner.mode-train .center-slot { display: flex; }
+        .topbar-inner.mode-train .right       { display: none !important; }
+        .topbar-inner.mode-home  .center-slot { display: none; }
+
+        @media (max-width: 720px) {
+            .topbar { min-height: 62px; }
+            .topbar-inner { min-height: 62px; padding: 0 0.6em 0 0.9em; gap: 0.3em; }
+
+            .lang-badge { min-width: 100px; height: 46px; padding: 0 1em; font-size: 14px; }
+            .level-icon { width: 46px; height: 46px; font-size: 15px; }
+
+            .history-btn { height: 46px; padding: 0 1.1em; font-size: 15px; }
+            .history-btn.auth-btn { font-size: 15px; padding: 0 1.1em; }
+            .settings-btn { width: 46px; height: 46px; }
+            .settings-btn svg { width: 22px; height: 22px; }
+
+            .timer { font-size: 14px; }
+            .timer b { font-size: 18px; min-width: 2.4em; }
+
+            .finish-btn { padding: 0.55em 1.4em; font-size: 17px; }
+        }
+
+        @media (max-width: 560px) {
+            .topbar { min-height: 56px; }
+            .topbar-inner { min-height: 56px; padding: 0 0.5em 0 0.6em; gap: 0.25em; }
+
+            .lang-badge { min-width: 90px; height: 40px; padding: 0 0.8em; font-size: 13px; }
+            .level-icon { width: 40px; height: 40px; font-size: 13px; }
+
+            .history-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
+            .history-btn.auth-btn { font-size: 14px; padding: 0 0.9em; height: 40px; }
+            .settings-btn { width: 40px; height: 40px; }
+            .settings-btn svg { width: 20px; height: 20px; }
+
+            .timer { font-size: 12px; }
+            .timer b { font-size: 15px; min-width: 2.2em; }
+
+            .center-slot { gap: 0.3em; }
+            .finish-btn { padding: 0.45em 1em; font-size: 15px; }
+        }
+
+        @media (max-width: 400px) {
+            .topbar { min-height: 54px; }
+            .topbar-inner { min-height: 54px; }
+
+            .timer { font-size: 11px; }
+            .timer b { font-size: 14px; min-width: 2em; }
+            .history-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
+            .history-btn.auth-btn { font-size: 13px; padding: 0 0.7em; height: 38px; }
+            .settings-btn { width: 38px; height: 38px; }
+            .settings-btn svg { width: 18px; height: 18px; }
+            .lang-badge { min-width: 80px; height: 36px; font-size: 12px; }
+            .level-icon { width: 36px; height: 36px; font-size: 12px; }
+        }
+
+        .wrapper {
+            flex: 1 1 auto;
+            padding: 1em 1em 1em 2em;
+            display: flex; flex-direction: column; min-height: 0;
+            overflow: hidden;
+        }
+        .view { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+        @media (max-width: 720px) {
+            .wrapper {
+                padding: 0.5em 0.5em 0.5em 0.75em;
+            }
+        }
+
+        /* ===== Главный экран ===== */
+        .home-dark {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
             min-height: 0;
-            margin: 6px;
+            overflow: hidden;
+            background: #1b1c1d;
+            margin: -1em -1em -1em -2em;
+            padding: 0;
         }
-        .start-bar .sb-label { font-size: 22px; }
-    }
-</style>
+        @media (max-width: 720px) {
+            .home-dark { margin: -0.5em -0.5em -0.5em -0.75em; }
+        }
+
+        .levels-board {
+            flex: 1 1 auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            padding: 8px;
+            min-height: 0;
+        }
+        .level-tile {
+            position: relative;
+            border: none;
+            border-radius: 20px;
+            font-family: inherit;
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: transform 0.12s cubic-bezier(.2,.8,.2,1), filter 0.15s, box-shadow 0.2s, opacity 0.2s;
+            padding: 0;
+            opacity: 0.45;
+        }
+        .level-tile:hover:not(.disabled):not(.active) {
+            opacity: 0.85;
+            filter: brightness(1.08);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .level-tile:active:not(.disabled) {
+            transform: scale(0.97);
+            transition-duration: 0.05s;
+        }
+
+        .level-tile.active {
+            opacity: 1;
+            transform: translateY(-4px) scale(1.02);
+            box-shadow:
+                0 14px 36px rgba(0,0,0,0.5),
+                0 0 0 5px rgba(255,255,255,0.9),
+                0 0 30px 6px rgba(255,255,255,0.25);
+            z-index: 2;
+        }
+
+        .level-tile[data-level="A1"]:not(.disabled) { background: #e57373; }
+        .level-tile[data-level="A2"]:not(.disabled) { background: #e6a23c; }
+        .level-tile[data-level="B1"]:not(.disabled) { background: #f5c518; color: #1b1c1d; }
+        .level-tile[data-level="B2"]:not(.disabled) { background: #2ecc71; }
+        .level-tile.disabled {
+            background: #232426;
+            color: #555a60;
+            cursor: not-allowed;
+            opacity: 0.35;
+        }
+        .level-tile .tile-count {
+            position: absolute;
+            bottom: 14px;
+            right: 18px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            opacity: 0.9;
+            font-variant-numeric: tabular-nums;
+        }
+        .level-tile.disabled .tile-count { opacity: 0.35; }
+
+        .level-tile .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            background: rgba(255,255,255,0.45);
+            pointer-events: none;
+            animation: rippleAnim 0.6s ease-out forwards;
+        }
+        @keyframes rippleAnim {
+            to { transform: scale(3); opacity: 0; }
+        }
+
+        .start-bar {
+            flex: 0 0 auto;
+            margin: 8px;
+            border: none;
+            border-radius: 22px;
+            font-family: inherit;
+            color: #1b1c1d;
+            background: #ffffff;
+            cursor: pointer;
+            padding: 1em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 16vh;
+            transition: transform 0.1s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .start-bar:hover  { box-shadow: 0 12px 40px rgba(255,255,255,0.15); }
+        .start-bar:active { transform: scale(0.985); }
+        .start-bar .sb-label {
+            font-size: clamp(24px, 5vw, 40px);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            text-align: center;
+        }
+
+        /* ===== Настройки ===== */
+        .settings-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1.25em;
+            background: #f5f1e8;
+            border: 1px solid #ddd5c4;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        .settings-title {
+            color: #212121;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 1em;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75em;
+            background: #fff;
+            border-radius: 6px;
+            padding: 0.85em 1em;
+            font-size: 15px;
+            font-weight: 600;
+            color: #212121;
+            cursor: pointer;
+            user-select: none;
+        }
+        .settings-row + .settings-row { margin-top: 0.75em; }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex: 0 0 auto;
+            pointer-events: none;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #bbb;
+            border-radius: 26px;
+            transition: background 0.2s;
+        }
+        .switch-slider:before {
+            content: "";
+            position: absolute;
+            height: 20px; width: 20px;
+            left: 3px; bottom: 3px;
+            background-color: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+        .switch input:checked + .switch-slider { background-color: #2ecc71; }
+        .switch input:checked + .switch-slider:before { transform: translateX(22px); }
+
+        .size-btn {
+            margin-left: auto;
+            min-width: 56px;
+            height: 36px;
+            padding: 0 0.8em;
+            background: #5dade2;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .size-btn:hover { background: #3498db; }
+        .size-btn:active { transform: scale(0.97); }
+
+        /* ===== Тренировка / проверка ===== */
+        .train-screen {
+            display: flex; flex-direction: column; gap: 0.5em;
+            flex: 1 1 auto; min-height: 0;
+        }
+        .thumbs {
+            flex: 0 0 auto; display: flex; gap: 0.5em; padding: 0.5em;
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 4px;
+            overflow-x: auto; overflow-y: hidden;
+        }
+        .thumb {
+            flex: 0 0 auto; display: flex; flex-direction: column;
+            align-items: center; gap: 0.15em; cursor: pointer;
+        }
+        .thumb-img {
+            width: 56px; height: 44px; background: #ffffff;
+            border: 1px solid #bdbdbd; transition: border 0.15s, box-shadow 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; color: #555; text-align: center; padding: 0 2px;
+            overflow: hidden; line-height: 1.1;
+        }
+        .thumb.active .thumb-img {
+            border: 2px solid #e57373;
+            box-shadow: 0 0 0 2px rgba(229, 115, 115, 0.4);
+        }
+        .thumb-name {
+            background: #f5f5f5; border-radius: 3px; padding: 0 0.4em;
+            font-size: 10px; color: #212121; line-height: 1.4;
+            max-width: 64px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .train-area {
+            flex: 1 1 auto; min-height: 0;
+            display: flex; align-items: flex-start; justify-content: center;
+            padding: 0.75em 1em; background: #f5f1e8;
+            border: 1px solid #ddd5c4; border-radius: 4px;
+            overflow: auto;
+        }
+        .train-area.single-check {
+            background: #ffffff;
+            border-color: #ffffff;
+        }
+        .train-main {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start;
+            padding-top: 0.25em;
+            gap: 0.6em; min-height: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+        .face-square {
+            width: 80%;
+            max-width: 560px;
+            min-width: 0;
+            height: min(25vh, 220px);
+            background: #ffffff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 0.35em;
+            text-align: center;
+            padding: 0.75em;
+            font-size: clamp(24px, 3.2vw + 1vh, 34px);
+            font-weight: 500;
+            color: #212121;
+            overflow: hidden;
+            line-height: 1.15;
+            word-break: normal;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            cursor: pointer;
+        }
+        .face-square .fs-word { font-size: 1em; font-weight: 500; }
+        .face-square .fs-example {
+            font-size: 0.5em; font-weight: 400; color: #666; line-height: 1.2;
+        }
+        .name-plate {
+            width: 80%;
+            max-width: 560px;
+            min-width: 0;
+            height: 52px;
+            padding: 0 1em;
+            display: flex; align-items: center; justify-content: center;
+            background: #ffffff; border-radius: 8px; text-align: center;
+            font-size: clamp(22px, 2.4vw + 1vh, 34px);
+            font-weight: 500;
+            color: #212121; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+            line-height: 1.1;
+            cursor: pointer;
+        }
+        .train-controls { display: flex; gap: 0.5em; align-items: center; }
+        .ctrl-btn {
+            width: 56px; height: 44px; border: none; border-radius: 4px;
+            background: #2f8fd6; color: #fff; font-size: 20px;
+            cursor: pointer; display: inline-flex; align-items: center;
+            justify-content: center; font-family: inherit;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .ctrl-btn:hover { background: #2679b6; }
+        .ctrl-btn:active { transform: scale(0.95); }
+        .card-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            height: 44px;
+            padding: 0 0.6em;
+            background: rgba(0,0,0,0.55);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+
+        .check-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1.5em;
+            background: #f5f1e8; border: 1px solid #ddd5c4;
+            border-radius: 4px; overflow: auto;
+        }
+        .check-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0.75em; align-content: start;
+        }
+        .check-cell { display: flex; flex-direction: column; gap: 0.25em; min-width: 0; }
+        .check-img {
+            width: 100%; aspect-ratio: 1 / 0.75;
+            background: #ffffff; border: 1px solid #fff;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 0.4em;
+            font-size: 13px; color: #212121; font-weight: 500;
+            overflow: hidden; line-height: 1.15;
+            word-break: normal; overflow-wrap: break-word;
+        }
+        .check-input {
+            width: 100%; height: 32px;
+            border: 1px solid #fff; border-radius: 3px;
+            background: #ffffff; font-family: inherit;
+            font-size: 16px; padding: 0 0.4em;
+            text-align: center; color: #212121; outline: none;
+        }
+        .check-input:focus { border-color: #2f8fd6; }
+        .check-cell.current .check-input {
+            background: #ffe600; color: #000; font-weight: 600;
+        }
+        .check-input.correct { background: #2ecc71; color: #fff; font-weight: 600; border-color: #27ae60; }
+        .check-input.close   { background: #f39c12; color: #fff; font-weight: 600; border-color: #d68910; }
+        .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 600; border-color: #c0392b; }
+        .check-input:disabled { cursor: default; }
+
+        .check-input-one {
+            width: 80%; max-width: 560px; min-width: 0;
+            height: 44px; font-size: 18px; font-weight: 600;
+            text-align: center;
+            border: 2px solid #fff; border-radius: 6px;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+            padding: 0 0.6em;
+        }
+        .check-input-one:focus { border-color: #2f8fd6; }
+
+        @media (max-width: 720px) {
+            .face-square { width: 90%; max-width: none; height: min(22vh, 180px); }
+            .name-plate { width: 90%; max-width: none; height: 46px; }
+            .check-input-one { width: 90%; max-width: none; }
+        }
+        @media (max-width: 560px) {
+            .check-area { padding: 0.75em; }
+            .check-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5em; }
+            .check-img { font-size: 11px; padding: 0.3em; }
+            .check-input { height: 30px; font-size: 15px; }
+            .thumbs { padding: 0.35em; gap: 0.35em; }
+            .thumb-img { width: 44px; height: 36px; font-size: 8px; }
+            .thumb-name { font-size: 9px; max-width: 52px; }
+            .face-square { width: 90%; max-width: none; height: min(20vh, 150px); font-size: clamp(20px, 5vw, 28px); }
+            .name-plate { width: 90%; max-width: none; height: 40px; font-size: clamp(18px, 4.5vw, 26px); }
+            .check-input-one { width: 90%; max-width: none; height: 42px; font-size: 17px; }
+        }
+
+        /* ===== Результаты ===== */
+        .results-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1em;
+            background: #f5f1e8;
+            border: 1px solid #ddd5c4;
+            border-radius: 4px;
+            overflow: auto;
+            display: flex; flex-direction: column; gap: 0.75em;
+        }
+        .results-summary {
+            display: flex; gap: 0.75em; padding: 0.75em 1em;
+            background: #fff; border-radius: 4px;
+            align-items: center; flex-wrap: wrap;
+            font-size: 15px;
+        }
+        .results-summary .pill {
+            display: inline-flex; align-items: center; gap: 0.4em;
+            padding: 0.25em 0.75em; border-radius: 999px;
+            font-weight: 600;
+        }
+        .pill.green  { background: #d5f5e3; color: #1e8449; }
+        .pill.orange { background: #fdebd0; color: #b9770e; }
+        .pill.red    { background: #fadbd8; color: #a93226; }
+        .pill.total  { background: #eaecee; color: #212121; }
+
+        @media (max-width: 560px) {
+            .results-summary { gap: 0.4em; padding: 0.5em 0.6em; font-size: 12px; }
+            .results-summary .pill { padding: 0.2em 0.5em; font-size: 12px; gap: 0.25em; }
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 14px;
+            table-layout: fixed;
+        }
+        .results-table th,
+        .results-table td {
+            width: 33.3333%;
+            padding: 0.5em 0.75em;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+        }
+        .results-table th { background: #f5f5f5; font-weight: 600; color: #555; }
+        .results-table tr:last-child td { border-bottom: none; }
+        .results-table td.correct { background: #d5f5e3; color: #1e8449; font-weight: 600; }
+        .results-table td.close   { background: #fdebd0; color: #b9770e; font-weight: 600; }
+        .results-table td.wrong   { background: #fadbd8; color: #a93226; font-weight: 600; }
+        .results-table td.empty   { color: #999; font-style: italic; }
+        .results-table td.answer-ok { color: #212121; }
+
+        /* ===== История ===== */
+        .history-area {
+            flex: 1 1 auto; min-height: 0;
+            padding: 1em;
+            background: #f5f1e8;
+            border: 1px solid #ddd5c4;
+            border-radius: 4px;
+            overflow: auto;
+            display: flex; flex-direction: column; gap: 0.75em;
+        }
+        .history-empty {
+            padding: 2em 1em;
+            background: #fff;
+            border: 1px solid #ddd5c4;
+            border-radius: 4px;
+            text-align: center; color: #777;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 13px;
+            table-layout: fixed;
+        }
+        .history-table th,
+        .history-table td {
+            padding: 0.5em 0.6em;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+        }
+        .history-table th { background: #f5f5f5; font-weight: 600; color: #555; }
+        .history-table tr:last-child td { border-bottom: none; }
+        .history-table .col-date { width: 34%; }
+        .history-table td.ok    { color: #1e8449; font-weight: 600; }
+        .history-table td.close { color: #b9770e; font-weight: 600; }
+        .history-table td.wrong { color: #a93226; font-weight: 600; }
+        .history-row { cursor: pointer; }
+        .history-row:hover td { background: #f9f9f9; }
+
+        /* ===== Модальное окно авторизации ===== */
+        .auth-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 1em;
+        }
+        .auth-overlay.open { display: flex; }
+
+        .auth-modal {
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.5em;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75em;
+        }
+        .auth-title {
+            margin: 0 0 0.25em;
+            font-size: 20px;
+            font-weight: 700;
+            color: #212121;
+        }
+        .auth-input {
+            height: 42px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 0 0.75em;
+            font-family: inherit;
+            font-size: 15px;
+            outline: none;
+        }
+        .auth-input:focus { border-color: #2f8fd6; }
+        .auth-error {
+            color: #c0392b;
+            font-size: 13px;
+            min-height: 1.2em;
+        }
+        .auth-actions {
+            display: flex;
+            gap: 0.5em;
+            justify-content: flex-end;
+        }
+        .auth-btn-primary,
+        .auth-btn-secondary {
+            border: none;
+            border-radius: 6px;
+            padding: 0.55em 1.1em;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .auth-btn-primary { background: #2ecc71; color: #fff; }
+        .auth-btn-primary:hover { background: #27ae60; }
+        .auth-btn-primary:disabled { background: #aaa; cursor: wait; }
+        .auth-btn-secondary { background: #e0e0e0; color: #333; }
+        .auth-btn-secondary:hover { background: #d0d0d0; }
+
+        .auth-link {
+            background: none;
+            border: none;
+            color: #2f8fd6;
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 0;
+            text-align: left;
+            text-decoration: underline;
+        }
+        .auth-link:hover { color: #2679b6; }
+    </style>
 </head>
 <body>
-    <div class="stage">
+    <div class="stage" id="stage">
         <nav class="topbar">
-            <div class="brand">
-                <button class="lang-badge" id="langBtn" title="Сменить язык">English</button>
-                <button class="level-icon" id="lvlTopBtn" title="Сменить уровень">A1</button>
-            </div>
-            <div class="right">
-                <button class="history-btn" id="historyBtn">Результаты</button>
-                <button class="settings-btn" id="settingsBtn" title="Настройки">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                </button>
+            <div class="topbar-inner" id="topbarInner">
+                <div class="brand">
+                    <button class="lang-badge" id="homeLangBadge">English</button>
+                    <button class="level-icon" id="homeLevelIcon">A1</button>
+                </div>
+
+                <div class="train-slot" id="trainSlot" style="display:none">
+                    <div class="timer" id="timerWrap">Осталось: <b id="timerValue">1:00</b></div>
+                </div>
+
+                <div class="right">
+                    <button class="history-btn" id="historyBtn">Результаты</button>
+                    <button class="history-btn auth-btn" id="loginBtn" style="display:none">Войти</button>
+                    <button class="history-btn auth-btn" id="signupBtn" style="display:none">Регистрация</button>
+                    <button class="settings-btn" id="settingsBtn" title="Настройки">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="center-slot">
+                    <button class="finish-btn" id="finishBtn">Завершить</button>
+                </div>
             </div>
         </nav>
 
         <main class="wrapper">
-            <div class="levels-board" id="board">
-                <button class="level-tile active" data-level="A1">
-                    A1 <span class="tile-count">13 / 20</span>
-                </button>
-                <button class="level-tile" data-level="A2">
-                    A2 <span class="tile-count">0 / 40</span>
-                </button>
-                <button class="level-tile" data-level="B1">
-                    B1 <span class="tile-count">0 / 60</span>
-                </button>
-                <button class="level-tile" data-level="B2">
-                    B2 <span class="tile-count">0 / 80</span>
-                </button>
-                <button class="level-tile disabled" data-level="C1" disabled>
-                    C1 <span class="tile-count">—</span>
-                </button>
-                <button class="level-tile disabled" data-level="C2" disabled>
-                    C2 <span class="tile-count">—</span>
-                </button>
-            </div>
-
-            <button class="start-bar" id="startBtn">
-                <span class="sb-label">Начать тренировку</span>
-            </button>
+            <div id="view" class="view"></div>
         </main>
     </div>
 
-<script>
-(function() {
-    const LANG_KEY = 'wordlist_lang';
-    const LANGS = ['en', 'tr', 'de'];
-    const LANG_LABELS = { en: 'English', tr: 'Türkçe', de: 'Deutsch' };
-    const LANG_COLORS = { en: '#6b8cae', tr: '#b56b6b', de: '#c89b54' };
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-modal">
+            <h2 class="auth-title" id="authTitle">Вход</h2>
+            <input class="auth-input" type="email" id="authEmail" placeholder="Email" autocomplete="email">
+            <input class="auth-input" type="password" id="authPassword" placeholder="Пароль" autocomplete="current-password">
+            <button class="auth-link" id="authForgot" type="button">Забыли пароль?</button>
+            <div class="auth-error" id="authError"></div>
+            <div class="auth-actions">
+                <button class="auth-btn-secondary" id="authCancel">Отмена</button>
+                <button class="auth-btn-primary" id="authSubmit">Войти</button>
+            </div>
+        </div>
+    </div>
 
-    const LEVEL_COLORS = {
-        A1: '#e57373',
-        A2: '#e6a23c',
-        B1: '#f5c518',
-        B2: '#2ecc71',
-        C1: '#3f4145',
-        C2: '#3f4145',
-    };
+    <div class="auth-overlay" id="resetOverlay">
+        <div class="auth-modal">
+            <h2 class="auth-title">Восстановление пароля</h2>
+            <p style="margin:0;font-size:14px;color:#555;" id="resetHint">
+                Мы отправим ссылку на вашу почту. Перейдите по ней — и задайте новый пароль.
+            </p>
+            <input class="auth-input" type="email" id="resetEmail" placeholder="Email" autocomplete="email">
+            <input class="auth-input" type="password" id="resetNewPassword" placeholder="Новый пароль" autocomplete="new-password" style="display:none">
+            <div class="auth-error" id="resetError"></div>
+            <div class="auth-actions">
+                <button class="auth-btn-secondary" id="resetCancel">Отмена</button>
+                <button class="auth-btn-primary" id="resetSubmit">Отправить ссылку</button>
+            </div>
+        </div>
+    </div>
 
-    let currentLang = localStorage.getItem(LANG_KEY);
-    if (!LANG_LABELS[currentLang]) currentLang = 'en';
-
-    let currentLevel = 'A1';
-
-    const langBtn     = document.getElementById('langBtn');
-    const lvlTopBtn   = document.getElementById('lvlTopBtn');
-    const board       = document.getElementById('board');
-    const historyBtn  = document.getElementById('historyBtn');
-    const settingsBtn = document.getElementById('settingsBtn');
-    const startBtn    = document.getElementById('startBtn');
-
-    function nextLang(code) {
-        const i = LANGS.indexOf(code);
-        return LANGS[(i + 1) % LANGS.length];
-    }
-
-    function updateLangBadge() {
-        langBtn.textContent = LANG_LABELS[currentLang];
-        langBtn.style.background = LANG_COLORS[currentLang];
-    }
-
-    function updateLevelBadge() {
-        lvlTopBtn.textContent = currentLevel;
-        lvlTopBtn.style.background = LEVEL_COLORS[currentLevel];
-        lvlTopBtn.style.color = currentLevel === 'B1' ? '#1b1c1d' : '#fff';
-    }
-
-    function setActiveLevel(level) {
-        currentLevel = level;
-        board.querySelectorAll('.level-tile').forEach(tile => {
-            tile.classList.toggle('active', tile.dataset.level === level);
-        });
-        updateLevelBadge();
-    }
-
-    function attachRipple(el) {
-        el.addEventListener('click', (e) => {
-            if (el.disabled || el.classList.contains('disabled')) return;
-            const rect = el.getBoundingClientRect();
-            const size = Math.max(rect.width, rect.height);
-            const x = (e.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2;
-            const y = (e.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2;
-            const ripple = document.createElement('span');
-            ripple.className = 'ripple';
-            ripple.style.width = ripple.style.height = size + 'px';
-            ripple.style.left = x + 'px';
-            ripple.style.top = y + 'px';
-            el.appendChild(ripple);
-            setTimeout(() => ripple.remove(), 600);
-        });
-    }
-    board.querySelectorAll('.level-tile').forEach(attachRipple);
-    [langBtn, lvlTopBtn, historyBtn, settingsBtn, startBtn].forEach(attachRipple);
-
-    board.querySelectorAll('.level-tile').forEach(tile => {
-        tile.addEventListener('click', () => {
-            if (tile.disabled || tile.classList.contains('disabled')) return;
-            setActiveLevel(tile.dataset.level);
-        });
-    });
-
-    langBtn.addEventListener('click', () => {
-        currentLang = nextLang(currentLang);
-        localStorage.setItem(LANG_KEY, currentLang);
-        updateLangBadge();
-        langBtn.animate(
-            [
-                { transform: 'scale(1)' },
-                { transform: 'scale(0.92)' },
-                { transform: 'scale(1)' }
-            ],
-            { duration: 220, easing: 'ease-out' }
-        );
-    });
-
-    lvlTopBtn.addEventListener('click', () => {
-        const enabledTiles = [...board.querySelectorAll('.level-tile:not(.disabled)')];
-        const i = enabledTiles.findIndex(t => t.dataset.level === currentLevel);
-        const next = enabledTiles[(i + 1) % enabledTiles.length];
-        if (next) setActiveLevel(next.dataset.level);
-    });
-
-    startBtn.addEventListener('click', () => {
-        const label = startBtn.querySelector('.sb-label');
-        const original = label.textContent;
-        label.textContent = 'Поехали…';
-        setTimeout(() => { label.textContent = original; }, 800);
-    });
-
-    historyBtn.addEventListener('click', () => {
-        historyBtn.animate(
-            [{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }, { transform: 'scale(1)' }],
-            { duration: 200, easing: 'ease-out' }
-        );
-    });
-    settingsBtn.addEventListener('click', () => {
-        settingsBtn.animate(
-            [{ transform: 'rotate(0)' }, { transform: 'rotate(90deg)' }, { transform: 'rotate(0)' }],
-            { duration: 350, easing: 'ease-out' }
-        );
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-        const enabledTiles = [...board.querySelectorAll('.level-tile:not(.disabled)')];
-        const i = enabledTiles.findIndex(t => t.dataset.level === currentLevel);
-        const next = enabledTiles[(i + (e.key === 'ArrowRight' ? 1 : -1) + enabledTiles.length) % enabledTiles.length];
-        if (next) setActiveLevel(next.dataset.level);
-    });
-
-    updateLangBadge();
-    updateLevelBadge();
-})();
-</script>
+    <script src="data/a1.js"></script>
+    <script src="data/a2.js"></script>
+    <script src="data/b1.js"></script>
+    <script src="data/b2.js"></script>
+    <script src="data/ge_a1.js"></script>
+    <script src="data/tr_b2.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
 </body>
 </html>
