@@ -20,6 +20,9 @@ let timerInterval  = null;
 
 let sessionSnapshots = [];
 
+let progressCache = null;
+let progressCacheKey = '';
+
 /* ===== Пользователь ===== */
 let currentUser = null;
 let authMode = 'login';
@@ -224,6 +227,7 @@ homeLangBadge.addEventListener('click', (e) => {
 
     currentLanguage = nextLang(currentLanguage);
     saveLang(currentLanguage);
+    progressCache = null;
 
     if (!hasBankInLang(currentLanguage, currentLevel)) {
         const available = levels.filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
@@ -503,6 +507,7 @@ async function resetProgress() {
         .eq('lang', currentLanguage)
         .eq('level', currentLevel);
     if (error) console.warn('resetProgress error:', error.message);
+    progressCache = null;
 }
 
 async function resetAllProgress() {
@@ -511,6 +516,7 @@ async function resetAllProgress() {
         .delete()
         .eq('user_id', currentUser.id);
     if (error) console.warn('resetAllProgress error:', error.message);
+    progressCache = null;
 }
 
 /* ===== История (только Supabase) ===== */
@@ -650,8 +656,18 @@ function stopTimer() {
 }
 
 /* ===== Счётчики на плитках ===== */
-async function updateProgressBar() {
-    const countsByLevel = await loadAllProgressForLang();
+async function updateProgressBar(force = false) {
+    const key = currentLanguage + '|' + (currentUser ? currentUser.id : 'anon');
+
+    let countsByLevel;
+
+    if (!force && progressCache && progressCacheKey === key) {
+        countsByLevel = progressCache;
+    } else {
+        countsByLevel = await loadAllProgressForLang();
+        progressCache = countsByLevel;
+        progressCacheKey = key;
+    }
 
     document.querySelectorAll('.level-tile').forEach(tile => {
         const lvl = tile.dataset.level;
@@ -715,8 +731,13 @@ function renderHome() {
             if (tile.disabled || tile.classList.contains('disabled')) return;
             const lvl = tile.dataset.level;
             if (lvl === currentLevel) return;
+
+            view.querySelectorAll('.level-tile').forEach(t => {
+                t.classList.toggle('active', t.dataset.level === lvl);
+            });
+
             currentLevel = lvl;
-            refreshCurrentScreen();
+            updateHeaderBadges();
         });
     });
 
@@ -1324,6 +1345,7 @@ async function commitProgress() {
 
     prog.learned = Array.from(learnedSet);
     await saveProgress(prog);
+    progressCache = null;
 }
 
 /* ===== Завершение сессии — сразу к результатам ===== */
@@ -1582,6 +1604,7 @@ async function initAuth() {
 
         sb.auth.onAuthStateChange((event, session) => {
             currentUser = session?.user || null;
+            progressCache = null;
 
             if (event === 'PASSWORD_RECOVERY') {
                 resetMode = 'update';
@@ -1672,6 +1695,7 @@ async function signOut() {
 
     await sb.auth.signOut();
     currentUser = null;
+    progressCache = null;
     closeAuthModal();
     if (screen === 'settings') renderSettings();
     updateHeader();
@@ -1915,7 +1939,7 @@ function renderSettings() {
         if (!ok) return;
 
         await resetProgress();
-        await updateProgressBar();
+        await updateProgressBar(true);
         alert('Прогресс сброшен.');
         renderSettings();
     });
@@ -1939,7 +1963,7 @@ function renderSettings() {
         if (!ok) return;
 
         await resetAllProgress();
-        await updateProgressBar();
+        await updateProgressBar(true);
         alert('Весь прогресс сброшен.');
         renderSettings();
     });
