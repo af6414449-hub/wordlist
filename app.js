@@ -208,13 +208,16 @@ function hasBank(level) {
     return hasBankInLang(currentLanguage, level);
 }
 
+/* Для китайского: ru — то, что показывается в check-img (иероглиф или перевод),
+   zh — иероглиф (всегда), py — пиньинь с тонами, tr — перевод (всегда).
+   На тренировке faceSquare всегда = иероглиф + пиньинь, namePlate = перевод. */
 function adaptZhBank(bank, mode) {
     return bank.map(w => ({
         en: w.pyPlain,
         ru: (mode === 'RU') ? w.ru : w.zh,
-        tr: w.ru,
-        py: w.py,
         zh: w.zh,
+        py: w.py,
+        tr: w.ru,
         ex: ''
     }));
 }
@@ -262,6 +265,7 @@ function updateHeaderBadges() {
     if (homeLangBadge) {
         homeLangBadge.textContent = langLabel(currentLanguage);
         homeLangBadge.style.background = langColor(currentLanguage);
+        homeLangBadge.classList.toggle('lang-zh', currentLanguage === 'zh');
     }
     if (homeLevelIcon) {
         const lvlDef = levelsFor(currentLanguage).find(l => l.code === currentLevel);
@@ -269,7 +273,8 @@ function updateHeaderBadges() {
         homeLevelIcon.dataset.level = currentLevel;
         homeLevelIcon.style.background = levelColors[currentLevel] || '#e0e0e0';
         homeLevelIcon.style.color = (currentLevel === 'B1') ? '#000' : '#fff';
-        homeLevelIcon.style.fontSize = (currentLanguage === 'zh') ? '13px' : '';
+        homeLevelIcon.classList.toggle('level-zh', currentLanguage === 'zh');
+        homeLevelIcon.style.fontSize = '';
     }
 }
 
@@ -781,10 +786,22 @@ function renderHome() {
             countText = '0 / ' + b.length;
         }
 
-        const isZh = currentLanguage === 'zh';
-        const tileStyle = isZh ? 'style="font-size:clamp(16px,2.6vw,28px);letter-spacing:0;"' : '';
-        return `<button class="${cls.join(' ')}" data-level="${lvl.code}" ${tileStyle} ${disabled ? 'disabled' : ''}>
-            ${lvl.label || lvl.code}
+        // для китайских плиток — разбиваем надпись на две строки
+        const isZhTile = currentLanguage === 'zh';
+        if (isZhTile) cls.push('tile-zh');
+
+        let inner;
+        if (isZhTile && lvl.label) {
+            const parts = lvl.label.split(' ');
+            const line1 = parts[0] || '';
+            const line2 = parts.slice(1).join(' ') || '';
+            inner = `<span class="tile-zh-line1">${line1}</span><span class="tile-zh-line2">${line2}</span>`;
+        } else {
+            inner = lvl.label || lvl.code;
+        }
+
+        return `<button class="${cls.join(' ')}" data-level="${lvl.code}" ${disabled ? 'disabled' : ''}>
+            ${inner}
             <span class="tile-count">${countText}</span>
         </button>`;
     }).join('');
@@ -874,12 +891,15 @@ async function startSession() {
 /* ===== Лента миниатюр ===== */
 function buildThumbsHTML() {
     const showAnswers = (screen === 'train') && (currentLanguage !== 'zh');
-    return sessionWords.map((item, i) => `
+    return sessionWords.map((item, i) => {
+        const label = (currentLanguage === 'zh') ? (item.zh || item.ru) : item.ru;
+        return `
         <div class="thumb${i === currentPerson ? ' active' : ''}" data-index="${i}">
-            <div class="thumb-img">${item.ru}</div>
+            <div class="thumb-img">${label}</div>
             ${showAnswers ? `<div class="thumb-name">${item.en}</div>` : ''}
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function updateThumbsActive() {
@@ -984,8 +1004,12 @@ function updateTrainCard() {
     if (!fs || !np) return;
 
     if (currentLanguage === 'zh') {
-        fs.innerHTML = `<span class="fs-word">${w.ru}</span>`;
-        np.innerHTML = w.py || '';
+        // Всегда: faceSquare = иероглиф + пиньинь, namePlate = перевод
+        fs.innerHTML = `
+            <span class="fs-zh">${w.zh || ''}</span>
+            <span class="fs-py">${w.py || ''}</span>
+        `;
+        np.innerHTML = w.tr || '';
     } else {
         const hasExample = !!(w.ex && w.ex.trim());
         fs.innerHTML = hasExample
@@ -1070,9 +1094,13 @@ function renderCheckAll() {
         const current  = (i === currentPerson) ? ' current' : '';
         const hintMode = (hintsOn || lengthOn);
 
+        const prompt = (currentLanguage === 'zh' && item.zh && item.ru === item.zh)
+            ? item.zh
+            : item.ru;
+
         return `
             <div class="check-cell${current}" data-index="${i}">
-                <div class="check-img">${item.ru}</div>
+                <div class="check-img">${prompt}</div>
                 <input
                     class="${cls.join(' ')}"
                     type="text"
@@ -1091,7 +1119,7 @@ function renderCheckAll() {
     `;
 
     view.querySelectorAll('.check-img').forEach(el => {
-        fitFontSize(el, 13, 8);
+        fitFontSize(el, 15, 9);
     });
 
     view.querySelectorAll('.check-input').forEach(inp => {
@@ -1123,17 +1151,22 @@ function renderCheckOne() {
     const inputCls = 'check-input check-input-one';
     const hintMode = (loadHints() || loadLength());
 
+    const prompt = (currentLanguage === 'zh' && item.zh && item.ru === item.zh)
+        ? item.zh
+        : item.ru;
+
     view.innerHTML = `
         <div class="train-screen">
             <div class="thumbs" id="thumbsBar">${buildThumbsHTML()}</div>
             <div class="train-area single-check">
                 <div class="train-main">
-                    <div class="face-square" id="faceSquare"><span class="fs-word">${item.ru}</span></div>
+                    <div class="face-square" id="faceSquare"><span class="fs-word">${prompt}</span></div>
                     <input
                         class="${inputCls}"
                         id="oneInput"
                         type="text"
                         value="${answer.replace(/"/g, '&quot;')}"
+                        placeholder="введите ответ"
                         data-index="${currentPerson}"
                         data-hint="${hintMode ? '1' : '0'}"
                     >
@@ -1475,7 +1508,9 @@ async function finishSession() {
         items: sessionWords.map((item, i) => ({
             ru: item.ru,
             en: item.en,
+            zh: item.zh || '',
             py: item.py || '',
+            tr: item.tr || '',
             userAnswer: userAnswers[i] || ''
         }))
     });
@@ -1500,11 +1535,18 @@ function renderResults() {
         const displayUser = displayUserRaw ? displayUserRaw : '—';
         const userCls = displayUserRaw ? verdict : 'empty';
 
-        const correctDisplay = (currentLanguage === 'zh') ? (item.py || item.en) : item.en;
+        let firstCol, correctDisplay;
+        if (currentLanguage === 'zh') {
+            firstCol = item.zh || item.ru;
+            correctDisplay = item.py || item.en;
+        } else {
+            firstCol = item.ru;
+            correctDisplay = item.en;
+        }
 
         return `
             <tr>
-                <td>${item.ru}</td>
+                <td>${firstCol}</td>
                 <td class="${userCls}">${displayUser}</td>
                 <td class="answer-ok">${correctDisplay}</td>
             </tr>
@@ -1646,11 +1688,18 @@ async function showHistoryEntry(historyIndex) {
         const displayUser = displayUserRaw ? displayUserRaw : '—';
         const userCls = displayUserRaw ? verdict : 'empty';
 
-        const correctDisplay = (snap.lang === 'zh') ? (it.py || it.en) : it.en;
+        let firstCol, correctDisplay;
+        if (snap.lang === 'zh') {
+            firstCol = it.zh || it.ru;
+            correctDisplay = it.py || it.en;
+        } else {
+            firstCol = it.ru;
+            correctDisplay = it.en;
+        }
 
         return `
             <tr>
-                <td>${it.ru}</td>
+                <td>${firstCol}</td>
                 <td class="${userCls}">${displayUser}</td>
                 <td class="answer-ok">${correctDisplay}</td>
             </tr>
