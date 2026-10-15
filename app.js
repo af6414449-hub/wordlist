@@ -230,7 +230,6 @@ homeLangBadge.addEventListener('click', (e) => {
         if (available.length) currentLevel = available[0].code;
     }
 
-    // Лёгкая анимация плашки
     homeLangBadge.animate(
         [
             { transform: 'scale(1)' },
@@ -461,6 +460,29 @@ async function loadProgress() {
     return { learned: [] };
 }
 
+/* Загружает прогресс для всех уровней текущего языка — для отображения на плитках */
+async function loadAllProgressForLang() {
+    const result = {};
+    if (!currentUser) {
+        (levels || []).forEach(l => { result[l.code] = 0; });
+        return result;
+    }
+    const { data, error } = await sb
+        .from('progress')
+        .select('level,learned')
+        .eq('user_id', currentUser.id)
+        .eq('lang', currentLanguage);
+    if (!error && Array.isArray(data)) {
+        data.forEach(r => {
+            result[r.level] = Array.isArray(r.learned) ? r.learned.length : 0;
+        });
+    }
+    (levels || []).forEach(l => {
+        if (result[l.code] == null) result[l.code] = 0;
+    });
+    return result;
+}
+
 async function saveProgress(progress) {
     if (!currentUser) return;
     const { error } = await sb.from('progress').upsert({
@@ -537,7 +559,6 @@ function updateHeader() {
 
     historyBtn.textContent = (screen === 'history' || screen === 'history-entry') ? 'Назад' : 'Результаты';
 
-    // Тёмный фон сцены только на главной
     if (stageEl) {
         stageEl.classList.toggle('dark-home', screen === 'home');
     }
@@ -586,7 +607,7 @@ function updateHeader() {
         finishBtn.textContent = 'Продолжить';
         finishBtn.classList.add('continue');
     } else if (screen === 'check') {
-        finishBtn.textContent = 'К результатам';
+        finishBtn.textContent = 'Продолжить';
         finishBtn.classList.add('continue');
     } else {
         finishBtn.textContent = 'Завершить';
@@ -628,31 +649,22 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Плашки языка и уровня + счётчик на главном ===== */
+/* ===== Плашки языка и уровня + счётчики на плитках ===== */
 async function updateProgressBar() {
-    const bank = getBank(currentLevel) || [];
-    const total = bank.length;
-    const prog = await loadProgress();
-    const learned = prog.learned.length;
+    const countsByLevel = await loadAllProgressForLang();
 
-    const hp = document.querySelector('.level-tile[data-level="' + currentLevel + '"] .tile-count');
-    if (hp) {
-        if (total === 0) hp.textContent = '—';
-        else hp.textContent = `${learned} / ${total}`;
-    }
-
-    // Обновляем счётчики во всех плитках (для неактивных — 0 / N или N / N)
     document.querySelectorAll('.level-tile').forEach(tile => {
         const lvl = tile.dataset.level;
         const span = tile.querySelector('.tile-count');
         if (!span) return;
+
         if (!hasBankInLang(currentLanguage, lvl)) {
             span.textContent = '—';
-        } else if (lvl === currentLevel) {
-            const b = getBank(lvl) || [];
-            span.textContent = `${learned} / ${b.length}`;
+            return;
         }
-        // остальные уровни остаются с тем, что было
+        const b = BANKS[currentLanguage][lvl] || [];
+        const learned = countsByLevel[lvl] || 0;
+        span.textContent = `${learned} / ${b.length}`;
     });
 
     updateHeaderBadges();
@@ -677,7 +689,7 @@ function renderHome() {
         let countText = '—';
         if (bankExists) {
             const b = BANKS[currentLanguage][lvl.code];
-            countText = (lvl.code === currentLevel ? '0' : '0') + ' / ' + b.length;
+            countText = '0 / ' + b.length;
         }
 
         return `<button class="${cls.join(' ')}" data-level="${lvl.code}" ${disabled ? 'disabled' : ''}>
@@ -697,7 +709,6 @@ function renderHome() {
         </div>
     `;
 
-    // Клик по плитке уровня
     view.querySelectorAll('.level-tile').forEach(tile => {
         tile.addEventListener('click', () => {
             if (tile.disabled || tile.classList.contains('disabled')) return;
@@ -708,7 +719,6 @@ function renderHome() {
         });
     });
 
-    // Ripple
     view.querySelectorAll('.level-tile').forEach(tile => {
         tile.addEventListener('click', (e) => {
             if (tile.disabled || tile.classList.contains('disabled')) return;
@@ -726,7 +736,6 @@ function renderHome() {
         });
     });
 
-    // Кнопка "Начать тренировку"
     const startBtn = document.getElementById('startBtn');
     startBtn.addEventListener('click', () => {
         startSession();
@@ -760,7 +769,6 @@ async function startSession() {
     userAnswers  = sessionWords.map(() => '');
     currentPerson = 0;
     screen = 'train';
-    renderCheckOne._focusedOnce = false;
     renderTrain();
     startTimer();
 }
@@ -928,7 +936,6 @@ function goToCheck() {
     userAnswers = sessionWords.map(item => buildHintMask(item.en));
 
     currentPerson = 0;
-    renderCheckOne._focusedOnce = false;
     renderCheck();
 }
 
@@ -1075,17 +1082,15 @@ function renderCheckOne() {
             });
         }
 
-        if (!renderCheckOne._focusedOnce) {
-            renderCheckOne._focusedOnce = true;
-            try { inp.focus({ preventScroll: true }); } catch (_) {}
+        // Фокус при каждом рендере — чтобы можно было сразу печатать после стрелок
+        try { inp.focus({ preventScroll: true }); } catch (_) {}
 
-            if (window.visualViewport && window.innerWidth <= 720) {
-                setTimeout(() => {
-                    try {
-                        inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    } catch (_) {}
-                }, 350);
-            }
+        if (window.visualViewport && window.innerWidth <= 720) {
+            setTimeout(() => {
+                try {
+                    inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                } catch (_) {}
+            }, 250);
         }
     }
 
@@ -1971,14 +1976,6 @@ function fitFontSize(el, max, min) {
         guard++;
     }
 }
-
-/* ===== Кнопка Домой ===== */
-document.getElementById('homeBtn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    stopTimer();
-    screen = 'home';
-    renderHome();
-});
 
 /* ===== Кнопка «Результаты» ===== */
 historyBtn.addEventListener('click', () => {
