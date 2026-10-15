@@ -460,26 +460,26 @@ async function loadProgress() {
     return { learned: [] };
 }
 
-/* Загружает прогресс для всех уровней текущего языка — для отображения на плитках */
+/* Загружает прогресс для всех уровней текущего языка */
 async function loadAllProgressForLang() {
     const result = {};
-    if (!currentUser) {
-        (levels || []).forEach(l => { result[l.code] = 0; });
-        return result;
-    }
+    (levels || []).forEach(l => { result[l.code] = 0; });
+
+    if (!currentUser) return result;
+
     const { data, error } = await sb
         .from('progress')
         .select('level,learned')
         .eq('user_id', currentUser.id)
         .eq('lang', currentLanguage);
+
     if (!error && Array.isArray(data)) {
         data.forEach(r => {
             result[r.level] = Array.isArray(r.learned) ? r.learned.length : 0;
         });
+    } else if (error) {
+        console.warn('loadAllProgressForLang error:', error.message);
     }
-    (levels || []).forEach(l => {
-        if (result[l.code] == null) result[l.code] = 0;
-    });
     return result;
 }
 
@@ -649,7 +649,7 @@ function stopTimer() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-/* ===== Плашки языка и уровня + счётчики на плитках ===== */
+/* ===== Счётчики на плитках ===== */
 async function updateProgressBar() {
     const countsByLevel = await loadAllProgressForLang();
 
@@ -686,9 +686,10 @@ function renderHome() {
         if (isActive) cls.push('active');
         if (disabled) cls.push('disabled');
 
+        // Реальная длина базы
         let countText = '—';
         if (bankExists) {
-            const b = BANKS[currentLanguage][lvl.code];
+            const b = BANKS[currentLanguage][lvl.code] || [];
             countText = '0 / ' + b.length;
         }
 
@@ -1082,7 +1083,7 @@ function renderCheckOne() {
             });
         }
 
-        // Фокус при каждом рендере — чтобы можно было сразу печатать после стрелок
+        // Автофокус при каждом рендере карточки
         try { inp.focus({ preventScroll: true }); } catch (_) {}
 
         if (window.visualViewport && window.innerWidth <= 720) {
