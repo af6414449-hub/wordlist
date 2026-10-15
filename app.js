@@ -155,8 +155,8 @@ const LEVELS_BY_LANG = {
     zh: [
         { code: 'HSK1_ZH', label: 'HSK1 汉字', enabled: true  },
         { code: 'HSK1_RU', label: 'HSK1 词义', enabled: true  },
-        { code: 'HSK2_ZH', label: 'HSK2 汉字', enabled: false },
-        { code: 'HSK2_RU', label: 'HSK2 词义', enabled: false },
+        { code: 'HSK2_ZH', label: 'HSK2 汉字', enabled: true  },
+        { code: 'HSK2_RU', label: 'HSK2 词义', enabled: true  },
         { code: 'HSK3_ZH', label: 'HSK3 汉字', enabled: false },
         { code: 'HSK3_RU', label: 'HSK3 词义', enabled: false },
     ],
@@ -175,8 +175,8 @@ const levelColors = {
     C2: '#3f4145',
     HSK1_ZH: '#c0392b',
     HSK1_RU: '#8e44ad',
-    HSK2_ZH: '#3f4145',
-    HSK2_RU: '#3f4145',
+    HSK2_ZH: '#c0392b',
+    HSK2_RU: '#8e44ad',
     HSK3_ZH: '#3f4145',
     HSK3_RU: '#3f4145',
 };
@@ -197,6 +197,8 @@ const BANKS = {
     zh: {
         HSK1_ZH: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
         HSK1_RU: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
+        HSK2_ZH: typeof WORDS_ZH_HSK2 !== 'undefined' ? WORDS_ZH_HSK2 : null,
+        HSK2_RU: typeof WORDS_ZH_HSK2 !== 'undefined' ? WORDS_ZH_HSK2 : null,
     },
 };
 
@@ -229,8 +231,8 @@ function getBank(level) {
 
     if (currentLanguage !== 'zh') return bank;
 
-    if (level === 'HSK1_ZH') return adaptZhBank(bank, 'ZH');
-    if (level === 'HSK1_RU') return adaptZhBank(bank, 'RU');
+    if (level === 'HSK1_ZH' || level === 'HSK2_ZH') return adaptZhBank(bank, 'ZH');
+    if (level === 'HSK1_RU' || level === 'HSK2_RU') return adaptZhBank(bank, 'RU');
 
     return bank;
 }
@@ -786,7 +788,6 @@ function renderHome() {
             countText = '0 / ' + b.length;
         }
 
-        // для китайских плиток — разбиваем надпись на две строки
         const isZhTile = currentLanguage === 'zh';
         if (isZhTile) cls.push('tile-zh');
 
