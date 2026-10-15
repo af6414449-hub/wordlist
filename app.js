@@ -33,7 +33,7 @@ const LANG_KEY = 'wordlist_lang';
 function loadLang() {
     try {
         const v = localStorage.getItem(LANG_KEY);
-        if (v === 'en' || v === 'tr' || v === 'de') return v;
+        if (v === 'en' || v === 'tr' || v === 'de' || v === 'zh') return v;
     } catch (_) {}
     return 'en';
 }
@@ -46,6 +46,7 @@ const langColors = {
     en: '#6b8cae',
     de: '#c89b54',
     tr: '#b56b6b',
+    zh: '#c0392b',
 };
 
 function langColor(code) {
@@ -55,17 +56,19 @@ function langLabel(code) {
     if (code === 'en') return 'English';
     if (code === 'tr') return 'Türkçe';
     if (code === 'de') return 'Deutsch';
+    if (code === 'zh') return '中文';
     return code;
 }
 function nextLang(code) {
-    if (code === 'en') return 'tr';
-    if (code === 'tr') return 'de';
-    return 'en';
+    const order = ['en', 'tr', 'de', 'zh'];
+    const i = order.indexOf(code);
+    return order[(i + 1) % order.length];
 }
 function langShort(code) {
     if (code === 'en') return 'EN';
     if (code === 'tr') return 'TR';
     if (code === 'de') return 'DE';
+    if (code === 'zh') return 'ZH';
     return code.toUpperCase();
 }
 
@@ -124,14 +127,44 @@ function timeLabel(sec) {
 }
 
 /* ===== Уровни ===== */
-const levels = [
-    { code: 'A1', enabled: true  },
-    { code: 'A2', enabled: true  },
-    { code: 'B1', enabled: true  },
-    { code: 'B2', enabled: true  },
-    { code: 'C1', enabled: false },
-    { code: 'C2', enabled: false },
-];
+const LEVELS_BY_LANG = {
+    en: [
+        { code: 'A1', label: 'A1', enabled: true  },
+        { code: 'A2', label: 'A2', enabled: true  },
+        { code: 'B1', label: 'B1', enabled: true  },
+        { code: 'B2', label: 'B2', enabled: true  },
+        { code: 'C1', label: 'C1', enabled: false },
+        { code: 'C2', label: 'C2', enabled: false },
+    ],
+    de: [
+        { code: 'A1', label: 'A1', enabled: true  },
+        { code: 'A2', label: 'A2', enabled: false },
+        { code: 'B1', label: 'B1', enabled: false },
+        { code: 'B2', label: 'B2', enabled: false },
+        { code: 'C1', label: 'C1', enabled: false },
+        { code: 'C2', label: 'C2', enabled: false },
+    ],
+    tr: [
+        { code: 'A1', label: 'A1', enabled: false },
+        { code: 'A2', label: 'A2', enabled: false },
+        { code: 'B1', label: 'B1', enabled: false },
+        { code: 'B2', label: 'B2', enabled: true  },
+        { code: 'C1', label: 'C1', enabled: false },
+        { code: 'C2', label: 'C2', enabled: false },
+    ],
+    zh: [
+        { code: 'HSK1_ZH', label: 'HSK1 汉字', enabled: true  },
+        { code: 'HSK1_RU', label: 'HSK1 词义', enabled: true  },
+        { code: 'HSK2_ZH', label: 'HSK2 汉字', enabled: false },
+        { code: 'HSK2_RU', label: 'HSK2 词义', enabled: false },
+        { code: 'HSK3_ZH', label: 'HSK3 汉字', enabled: false },
+        { code: 'HSK3_RU', label: 'HSK3 词义', enabled: false },
+    ],
+};
+
+function levelsFor(lang) {
+    return LEVELS_BY_LANG[lang] || LEVELS_BY_LANG.en;
+}
 
 const levelColors = {
     A1: '#e57373',
@@ -140,6 +173,12 @@ const levelColors = {
     B2: '#2ecc71',
     C1: '#3f4145',
     C2: '#3f4145',
+    HSK1_ZH: '#c0392b',
+    HSK1_RU: '#8e44ad',
+    HSK2_ZH: '#3f4145',
+    HSK2_RU: '#3f4145',
+    HSK3_ZH: '#3f4145',
+    HSK3_RU: '#3f4145',
 };
 
 const BANKS = {
@@ -155,6 +194,10 @@ const BANKS = {
     tr: {
         B2: typeof WORDS_TR_B2 !== 'undefined' ? WORDS_TR_B2 : null,
     },
+    zh: {
+        HSK1_ZH: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
+        HSK1_RU: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
+    },
 };
 
 function hasBankInLang(lang, level) {
@@ -164,9 +207,29 @@ function hasBankInLang(lang, level) {
 function hasBank(level) {
     return hasBankInLang(currentLanguage, level);
 }
+
+function adaptZhBank(bank, mode) {
+    return bank.map(w => ({
+        en: w.pyPlain,
+        ru: (mode === 'RU') ? w.ru : w.zh,
+        tr: w.ru,
+        py: w.py,
+        zh: w.zh,
+        ex: ''
+    }));
+}
+
 function getBank(level) {
     const l = BANKS[currentLanguage];
-    return (l && l[level]) ? l[level] : null;
+    if (!l || !l[level]) return null;
+    const bank = l[level];
+
+    if (currentLanguage !== 'zh') return bank;
+
+    if (level === 'HSK1_ZH') return adaptZhBank(bank, 'ZH');
+    if (level === 'HSK1_RU') return adaptZhBank(bank, 'RU');
+
+    return bank;
 }
 
 function storageLevelKey() {
@@ -201,10 +264,12 @@ function updateHeaderBadges() {
         homeLangBadge.style.background = langColor(currentLanguage);
     }
     if (homeLevelIcon) {
-        homeLevelIcon.textContent = currentLevel;
+        const lvlDef = levelsFor(currentLanguage).find(l => l.code === currentLevel);
+        homeLevelIcon.textContent = lvlDef ? (lvlDef.label || lvlDef.code) : currentLevel;
         homeLevelIcon.dataset.level = currentLevel;
         homeLevelIcon.style.background = levelColors[currentLevel] || '#e0e0e0';
         homeLevelIcon.style.color = (currentLevel === 'B1') ? '#000' : '#fff';
+        homeLevelIcon.style.fontSize = (currentLanguage === 'zh') ? '13px' : '';
     }
 }
 
@@ -230,7 +295,7 @@ homeLangBadge.addEventListener('click', (e) => {
     progressCache = null;
 
     if (!hasBankInLang(currentLanguage, currentLevel)) {
-        const available = levels.filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
+        const available = levelsFor(currentLanguage).filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
         if (available.length) currentLevel = available[0].code;
     }
 
@@ -251,7 +316,7 @@ homeLevelIcon.addEventListener('click', (e) => {
     e.stopPropagation();
     if (inTrainingMode()) return;
 
-    const available = levels.filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
+    const available = levelsFor(currentLanguage).filter(l => l.enabled && hasBankInLang(currentLanguage, l.code));
     if (!available.length) return;
 
     const curIdx = available.findIndex(l => l.code === currentLevel);
@@ -318,6 +383,10 @@ function shuffle(arr) {
 function normalize(s, lang) {
     let v = (s || '');
 
+    if (lang === 'zh') {
+        return v.toLowerCase().replace(/[^a-z]/g, '');
+    }
+
     if (lang === 'de') {
         v = v
             .replace(/ä/g, 'ae').replace(/Ä/g, 'ae')
@@ -367,12 +436,17 @@ function levenshtein(a, b) {
     return dp[m][n];
 }
 
-function evaluate(userAnswer, correctAnswer) {
+function evaluate(userAnswer, correctAnswer, item) {
     const cleaned = (userAnswer || '').replace(/\*/g, '');
     const u = normalize(cleaned, currentLanguage);
     const c = normalize(correctAnswer, currentLanguage);
     if (!u) return 'wrong';
     if (u === c) return 'correct';
+
+    if (currentLanguage === 'zh' && item && item.zh && userAnswer.trim() === item.zh) {
+        return 'correct';
+    }
+
     const dist = levenshtein(u, c);
     const allowed = Math.max(1, Math.round(c.length * 0.1));
     return dist <= allowed ? 'close' : 'wrong';
@@ -389,7 +463,7 @@ function hintPrefix(word) {
         if (w.startsWith('der ')) return 'der ';
         if (w.startsWith('die ')) return 'die ';
         if (w.startsWith('das ')) return 'das ';
-    } else if (currentLanguage === 'tr') {
+    } else if (currentLanguage === 'tr' || currentLanguage === 'zh') {
         // нет артиклей
     } else {
         if (w.startsWith('to '))  return 'to ';
@@ -425,7 +499,7 @@ function hintLockLength(correctAnswer) {
 }
 
 /* ===== Озвучка (Speech Synthesis) ===== */
-const voiceLangMap = { en: 'en-US', de: 'de-DE', tr: 'tr-TR' };
+const voiceLangMap = { en: 'en-US', de: 'de-DE', tr: 'tr-TR', zh: 'zh-CN' };
 
 function speakWord(text) {
     if (!loadVoice()) return;
@@ -435,7 +509,7 @@ function speakWord(text) {
 
     const u = new SpeechSynthesisUtterance(text);
     u.lang = voiceLangMap[currentLanguage] || 'en-US';
-    u.rate = 0.9;
+    u.rate = (currentLanguage === 'zh') ? 0.8 : 0.9;
     u.pitch = 1;
 
     const voices = window.speechSynthesis.getVoices();
@@ -464,10 +538,9 @@ async function loadProgress() {
     return { learned: [] };
 }
 
-/* Загружает прогресс для всех уровней текущего языка */
 async function loadAllProgressForLang() {
     const result = {};
-    (levels || []).forEach(l => { result[l.code] = 0; });
+    (levelsFor(currentLanguage) || []).forEach(l => { result[l.code] = 0; });
 
     if (!currentUser) return result;
 
@@ -689,11 +762,11 @@ async function updateProgressBar(force = false) {
 /* ===== Главный экран ===== */
 function renderHome() {
     if (!hasBankInLang(currentLanguage, currentLevel)) {
-        const first = levels.find(l => l.enabled && hasBankInLang(currentLanguage, l.code));
+        const first = levelsFor(currentLanguage).find(l => l.enabled && hasBankInLang(currentLanguage, l.code));
         if (first) currentLevel = first.code;
     }
 
-    const tilesHtml = levels.map(lvl => {
+    const tilesHtml = levelsFor(currentLanguage).map(lvl => {
         const bankExists = hasBankInLang(currentLanguage, lvl.code);
         const isActive = lvl.code === currentLevel && bankExists;
         const disabled = !bankExists;
@@ -702,15 +775,16 @@ function renderHome() {
         if (isActive) cls.push('active');
         if (disabled) cls.push('disabled');
 
-        // Реальная длина базы
         let countText = '—';
         if (bankExists) {
             const b = BANKS[currentLanguage][lvl.code] || [];
             countText = '0 / ' + b.length;
         }
 
-        return `<button class="${cls.join(' ')}" data-level="${lvl.code}" ${disabled ? 'disabled' : ''}>
-            ${lvl.code}
+        const isZh = currentLanguage === 'zh';
+        const tileStyle = isZh ? 'style="font-size:clamp(16px,2.6vw,28px);letter-spacing:0;"' : '';
+        return `<button class="${cls.join(' ')}" data-level="${lvl.code}" ${tileStyle} ${disabled ? 'disabled' : ''}>
+            ${lvl.label || lvl.code}
             <span class="tile-count">${countText}</span>
         </button>`;
     }).join('');
@@ -780,7 +854,9 @@ async function startSession() {
     const prog = await loadProgress();
     const learnedSet = new Set(prog.learned);
 
-    let fresh = bank.filter(w => !learnedSet.has(w.en));
+    const keyOf = (w) => (currentLanguage === 'zh') ? (w.zh + '|' + w.en) : w.en;
+
+    let fresh = bank.filter(w => !learnedSet.has(keyOf(w)));
     if (fresh.length < size) {
         await resetProgress();
         fresh = bank.slice();
@@ -797,7 +873,7 @@ async function startSession() {
 
 /* ===== Лента миниатюр ===== */
 function buildThumbsHTML() {
-    const showAnswers = (screen === 'train');
+    const showAnswers = (screen === 'train') && (currentLanguage !== 'zh');
     return sessionWords.map((item, i) => `
         <div class="thumb${i === currentPerson ? ' active' : ''}" data-index="${i}">
             <div class="thumb-img">${item.ru}</div>
@@ -885,13 +961,15 @@ function renderTrain() {
     const faceSquare = document.getElementById('faceSquare');
     faceSquare.addEventListener('click', () => {
         const w = sessionWords[currentPerson];
-        speakWord(w.en);
+        if (currentLanguage === 'zh') speakWord(w.zh);
+        else speakWord(w.en);
     });
 
     const namePlate = document.getElementById('namePlate');
     namePlate.addEventListener('click', () => {
         const w = sessionWords[currentPerson];
-        speakWord(w.en);
+        if (currentLanguage === 'zh') speakWord(w.zh);
+        else speakWord(w.en);
     });
 
     updateTrainCard();
@@ -905,12 +983,17 @@ function updateTrainCard() {
     const np = document.getElementById('namePlate');
     if (!fs || !np) return;
 
-    const hasExample = !!(w.ex && w.ex.trim());
-    fs.innerHTML = hasExample
-        ? `<span class="fs-word">${w.ru}</span><span class="fs-example">${w.ex}</span>`
-        : `<span class="fs-word">${w.ru}</span>`;
+    if (currentLanguage === 'zh') {
+        fs.innerHTML = `<span class="fs-word">${w.ru}</span>`;
+        np.innerHTML = w.py || '';
+    } else {
+        const hasExample = !!(w.ex && w.ex.trim());
+        fs.innerHTML = hasExample
+            ? `<span class="fs-word">${w.ru}</span><span class="fs-example">${w.ex}</span>`
+            : `<span class="fs-word">${w.ru}</span>`;
 
-    np.innerHTML = `${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span>`;
+        np.innerHTML = `${w.en} <span style="font-size:0.7em;opacity:0.65">(${w.pos})</span>`;
+    }
 
     fitFontSize(fs, 40, 14);
     fitFontSize(np, 34, 12);
@@ -921,7 +1004,11 @@ function updateTrainCard() {
     updateThumbsActive();
     ensureThumbVisible();
 
-    speakWord(w.en);
+    if (currentLanguage === 'zh') {
+        speakWord(w.zh);
+    } else {
+        speakWord(w.en);
+    }
 }
 
 /* ===== Навигация клавишами на тренировке ===== */
@@ -1104,7 +1191,6 @@ function renderCheckOne() {
             });
         }
 
-        // Автофокус при каждом рендере карточки
         try { inp.focus({ preventScroll: true }); } catch (_) {}
 
         if (window.visualViewport && window.innerWidth <= 720) {
@@ -1339,8 +1425,11 @@ async function commitProgress() {
     const learnedSet = new Set(prog.learned);
 
     sessionWords.forEach((item, i) => {
-        const verdict = evaluate(userAnswers[i] || '', item.en);
-        if (verdict === 'correct') learnedSet.add(item.en);
+        const verdict = evaluate(userAnswers[i] || '', item.en, item);
+        if (verdict === 'correct') {
+            const key = (currentLanguage === 'zh') ? (item.zh + '|' + item.en) : item.en;
+            learnedSet.add(key);
+        }
     });
 
     prog.learned = Array.from(learnedSet);
@@ -1354,7 +1443,7 @@ async function finishSession() {
 
     let correct = 0, close = 0, wrong = 0;
     sessionWords.forEach((item, i) => {
-        const v = evaluate(userAnswers[i] || '', item.en);
+        const v = evaluate(userAnswers[i] || '', item.en, item);
         if (v === 'correct') correct++;
         else if (v === 'close') close++;
         else wrong++;
@@ -1386,6 +1475,7 @@ async function finishSession() {
         items: sessionWords.map((item, i) => ({
             ru: item.ru,
             en: item.en,
+            py: item.py || '',
             userAnswer: userAnswers[i] || ''
         }))
     });
@@ -1400,7 +1490,7 @@ function renderResults() {
 
     const rows = sessionWords.map((item, i) => {
         const userAns = userAnswers[i] || '';
-        const verdict = evaluate(userAns, item.en);
+        const verdict = evaluate(userAns, item.en, item);
 
         if (verdict === 'correct') correct++;
         else if (verdict === 'close') close++;
@@ -1410,11 +1500,13 @@ function renderResults() {
         const displayUser = displayUserRaw ? displayUserRaw : '—';
         const userCls = displayUserRaw ? verdict : 'empty';
 
+        const correctDisplay = (currentLanguage === 'zh') ? (item.py || item.en) : item.en;
+
         return `
             <tr>
                 <td>${item.ru}</td>
                 <td class="${userCls}">${displayUser}</td>
-                <td class="answer-ok">${item.en}</td>
+                <td class="answer-ok">${correctDisplay}</td>
             </tr>
         `;
     }).join('');
@@ -1554,11 +1646,13 @@ async function showHistoryEntry(historyIndex) {
         const displayUser = displayUserRaw ? displayUserRaw : '—';
         const userCls = displayUserRaw ? verdict : 'empty';
 
+        const correctDisplay = (snap.lang === 'zh') ? (it.py || it.en) : it.en;
+
         return `
             <tr>
                 <td>${it.ru}</td>
                 <td class="${userCls}">${displayUser}</td>
-                <td class="answer-ok">${it.en}</td>
+                <td class="answer-ok">${correctDisplay}</td>
             </tr>
         `;
     }).join('');
@@ -1923,16 +2017,20 @@ function renderSettings() {
     resetRow.className = 'settings-row';
     resetRow.id = 'rowReset';
     resetRow.style.cursor = 'pointer';
+
+    const lvlDef = levelsFor(currentLanguage).find(l => l.code === currentLevel);
+    const lvlLabel = lvlDef ? (lvlDef.label || lvlDef.code) : currentLevel;
+
     resetRow.innerHTML = `
         <span>Сбросить прогресс</span>
         <span style="margin-left:auto;display:inline-flex;gap:0.4em;align-items:center;">
             <span style="display:inline-flex;align-items:center;justify-content:center;min-width:80px;height:24px;padding:0 0.6em;border-radius:4px;background:${langColor(currentLanguage)};color:#fff;font-size:12px;font-weight:700;">${langLabel(currentLanguage)}</span>
-            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 0.5em;border-radius:4px;background:${levelColors[currentLevel] || '#e0e0e0'};color:${currentLevel === 'B1' ? '#000' : '#fff'};font-size:12px;font-weight:700;">${currentLevel}</span>
+            <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 0.5em;border-radius:4px;background:${levelColors[currentLevel] || '#e0e0e0'};color:${currentLevel === 'B1' ? '#000' : '#fff'};font-size:12px;font-weight:700;">${lvlLabel}</span>
         </span>
     `;
     resetRow.addEventListener('click', async () => {
         const ok = confirm(
-            `Сбросить прогресс для ${langLabel(currentLanguage)} ${currentLevel}?\n\n` +
+            `Сбросить прогресс для ${langLabel(currentLanguage)} ${lvlLabel}?\n\n` +
             `Все выученные слова этого уровня будут забыты.\n` +
             `История попыток сохранится.`
         );
