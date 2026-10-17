@@ -218,11 +218,6 @@ function hasBank(level) {
     return hasBankInLang(currentLanguage, level);
 }
 
-/* Режимы китайского:
-   ZH — показ иероглиф + пиньинь, ввод пиньинь
-   RU — показ перевод, ввод пиньинь
-   YI — показ иероглиф, ввод русский перевод
-*/
 function zhMode(level) {
     if (!level) return null;
     if (level.endsWith('_ZH')) return 'ZH';
@@ -234,8 +229,8 @@ function zhMode(level) {
 function adaptZhBank(bank, mode) {
     if (mode === 'YI') {
         return bank.map(w => ({
-            en: w.ru,        // ввод — русский перевод
-            ru: w.zh,        // показ — иероглиф
+            en: w.ru,
+            ru: w.zh,
             zh: w.zh,
             py: w.py,
             tr: w.ru,
@@ -419,11 +414,18 @@ function isZhYiLevel() {
     return currentLanguage === 'zh' && zhMode(currentLevel) === 'YI';
 }
 
+/* Разбиение строки на варианты по ":" */
+function splitVariants(s) {
+    return String(s || '')
+        .split(':')
+        .map(x => x.trim())
+        .filter(Boolean);
+}
+
 function normalize(s, lang) {
     let v = (s || '');
 
     if (lang === 'zh') {
-        // для *_YI — нормализуем русский, иначе — латиницу
         if (isZhYiLevel()) {
             return v.toLowerCase()
                 .replace(/ё/g, 'е')
@@ -487,25 +489,42 @@ function allowedTyposForYi(cLen) {
     return 2;
 }
 
+/* Поддержка нескольких вариантов через ":" и игнор пунктуации */
 function evaluate(userAnswer, correctAnswer, item) {
     const cleaned = (userAnswer || '').replace(/\*/g, '');
     const u = normalize(cleaned, currentLanguage);
-    const c = normalize(correctAnswer, currentLanguage);
     if (!u) return 'wrong';
-    if (u === c) return 'correct';
 
-    // для китайского: если ввели иероглиф, а ответ — пиньинь (не *_YI) — correct
-    if (currentLanguage === 'zh' && !isZhYiLevel() && item && item.zh && userAnswer.trim() === item.zh) {
-        return 'correct';
+    const variants = splitVariants(correctAnswer);
+    if (!variants.length) return 'wrong';
+
+    // 1. точное совпадение с любым вариантом
+    for (const v of variants) {
+        if (normalize(v, currentLanguage) === u) return 'correct';
     }
 
-    const dist = levenshtein(u, c);
+    // 2. иероглиф вместо пиньиня (для _ZH и _RU)
+    if (currentLanguage === 'zh' && !isZhYiLevel() && item && item.zh) {
+        const userZh = userAnswer.replace(/[\s\p{P}]/gu, '');
+        if (userZh === item.zh) return 'correct';
+    }
+
+    // 3. опечатка относительно самого близкого варианта
+    let bestDist = Infinity;
+    let bestLen = 0;
+    for (const v of variants) {
+        const c = normalize(v, currentLanguage);
+        if (!c) continue;
+        const d = levenshtein(u, c);
+        if (d < bestDist) { bestDist = d; bestLen = c.length; }
+    }
+
     const allowed = isZhYiLevel()
-        ? allowedTyposForYi(c.length)
-        : Math.max(1, Math.round(c.length * 0.1));
+        ? allowedTyposForYi(bestLen)
+        : Math.max(1, Math.round(bestLen * 0.1));
 
     if (allowed === 0) return 'wrong';
-    return dist <= allowed ? 'close' : 'wrong';
+    return bestDist <= allowed ? 'close' : 'wrong';
 }
 
 function updateCheckCols() {
@@ -530,23 +549,24 @@ function hintPrefix(word) {
 
 function buildHintVisible(correctAnswer) {
     if (!loadHints()) return '';
-    const s = correctAnswer || '';
-    if (!s) return '';
-    const prefix = hintPrefix(s);
+    // берём первый вариант для подсказки
+    const first = splitVariants(correctAnswer)[0] || '';
+    if (!first) return '';
+    const prefix = hintPrefix(first);
     if (prefix) {
-        const rest = s.slice(prefix.length);
+        const rest = first.slice(prefix.length);
         if (!rest) return prefix.trim();
         return prefix + rest[0];
     }
-    return s[0] || '';
+    return first[0] || '';
 }
 
 function buildHintMask(correctAnswer) {
-    const s = correctAnswer || '';
-    const visible = buildHintVisible(s);
+    const first = splitVariants(correctAnswer)[0] || '';
+    const visible = buildHintVisible(first);
     const withLength = loadLength();
     if (!withLength) return visible;
-    const stars = '*'.repeat(Math.max(0, s.length - visible.length));
+    const stars = '*'.repeat(Math.max(0, first.length - visible.length));
     return visible + stars;
 }
 
@@ -1055,7 +1075,6 @@ function updateTrainCard() {
     if (!fs || !np) return;
 
     if (currentLanguage === 'zh') {
-        // на тренировке для всех трёх режимов: иероглиф + пиньинь + перевод
         fs.innerHTML = `
             <span class="fs-zh">${w.zh || ''}</span>
             <span class="fs-py">${w.py || ''}</span>
@@ -1133,14 +1152,13 @@ function renderCheck() {
     updateHeader();
 }
 
-/* Что показывать на проверке */
 function checkPrompt(item) {
     if (currentLanguage !== 'zh') return item.ru;
 
     const m = zhMode(currentLevel);
-    if (m === 'YI') return item.zh;       // только иероглиф, без пиньиня
-    if (m === 'RU') return item.ru;       // перевод
-    return item.zh;                        // ZH — иероглиф
+    if (m === 'YI') return item.zh;
+    if (m === 'RU') return item.ru;
+    return item.zh;
 }
 
 /* ---------- Режим "Все" (сетка) ---------- */
@@ -1303,7 +1321,7 @@ function saveOneInput() {
 /* ===== Режим подсказки ===== */
 function setupHintInput(inp) {
     const idx = Number(inp.dataset.index);
-    const correct = sessionWords[idx].en;
+    const correct = splitVariants(sessionWords[idx].en)[0] || '';
     const maxLen = correct.length;
     const lockLen = hintLockLength(correct);
     const visiblePart = buildHintVisible(correct);
@@ -1469,7 +1487,8 @@ function focusCurrentInput(scrollIfNeeded) {
     }
 
     if (el.dataset.hint === '1') {
-        const lockLen = hintLockLength(sessionWords[currentPerson].en);
+        const correct = splitVariants(sessionWords[currentPerson].en)[0] || '';
+        const lockLen = hintLockLength(correct);
         let userTyped = 0;
         for (let i = lockLen; i < el.value.length; i++) {
             if (el.value[i] !== '*') userTyped++;
@@ -1595,10 +1614,12 @@ function renderResults() {
         let firstCol, correctDisplay;
         if (currentLanguage === 'zh') {
             firstCol = item.zh || item.ru;
-            correctDisplay = isZhYiLevel() ? (item.tr || item.en) : (item.py || item.en);
+            correctDisplay = isZhYiLevel()
+                ? splitVariants(item.tr || item.en).join(' / ')
+                : (item.py || item.en);
         } else {
             firstCol = item.ru;
-            correctDisplay = item.en;
+            correctDisplay = splitVariants(item.en).join(' / ');
         }
 
         return `
@@ -1729,24 +1750,48 @@ async function showHistoryEntry(historyIndex) {
 
         let verdict;
         if (snap.lang === 'zh' && snap.level && snap.level.endsWith('_YI')) {
+            const variants = splitVariants(it.en);
             const u = normalize(cleaned, 'zh');
-            const c = normalize(it.en, 'zh');
             if (!u) verdict = 'wrong';
-            else if (u === c) verdict = 'correct';
             else {
-                const dist = levenshtein(u, c);
-                const allowed = allowedTyposForYi(c.length);
-                verdict = (allowed > 0 && dist <= allowed) ? 'close' : 'wrong';
+                let isCorrect = false;
+                for (const v of variants) {
+                    if (normalize(v, 'zh') === u) { isCorrect = true; break; }
+                }
+                if (isCorrect) verdict = 'correct';
+                else {
+                    let bestDist = Infinity, bestLen = 0;
+                    for (const v of variants) {
+                        const c = normalize(v, 'zh');
+                        if (!c) continue;
+                        const d = levenshtein(u, c);
+                        if (d < bestDist) { bestDist = d; bestLen = c.length; }
+                    }
+                    const allowed = allowedTyposForYi(bestLen);
+                    verdict = (allowed > 0 && bestDist <= allowed) ? 'close' : 'wrong';
+                }
             }
         } else {
+            const variants = splitVariants(it.en);
             const u = normalize(cleaned, lang);
-            const c = normalize(it.en, lang);
             if (!u) verdict = 'wrong';
-            else if (u === c) verdict = 'correct';
             else {
-                const dist = levenshtein(u, c);
-                const allowed = Math.max(1, Math.round(c.length * 0.1));
-                verdict = dist <= allowed ? 'close' : 'wrong';
+                let isCorrect = false;
+                for (const v of variants) {
+                    if (normalize(v, lang) === u) { isCorrect = true; break; }
+                }
+                if (isCorrect) verdict = 'correct';
+                else {
+                    let bestDist = Infinity, bestLen = 0;
+                    for (const v of variants) {
+                        const c = normalize(v, lang);
+                        if (!c) continue;
+                        const d = levenshtein(u, c);
+                        if (d < bestDist) { bestDist = d; bestLen = c.length; }
+                    }
+                    const allowed = Math.max(1, Math.round(bestLen * 0.1));
+                    verdict = bestDist <= allowed ? 'close' : 'wrong';
+                }
             }
         }
 
@@ -1762,11 +1807,11 @@ async function showHistoryEntry(historyIndex) {
         if (snap.lang === 'zh') {
             firstCol = it.zh || it.ru;
             correctDisplay = (snap.level && snap.level.endsWith('_YI'))
-                ? (it.tr || it.en)
+                ? splitVariants(it.tr || it.en).join(' / ')
                 : (it.py || it.en);
         } else {
             firstCol = it.ru;
-            correctDisplay = it.en;
+            correctDisplay = splitVariants(it.en).join(' / ');
         }
 
         return `
