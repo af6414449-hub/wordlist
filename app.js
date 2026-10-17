@@ -414,10 +414,10 @@ function isZhYiLevel() {
     return currentLanguage === 'zh' && zhMode(currentLevel) === 'YI';
 }
 
-/* Разбиение строки на варианты по ":" */
+/* Разбиение строки на варианты по ";" */
 function splitVariants(s) {
     return String(s || '')
-        .split(':')
+        .split(';')
         .map(x => x.trim())
         .filter(Boolean);
 }
@@ -489,7 +489,7 @@ function allowedTyposForYi(cLen) {
     return 2;
 }
 
-/* Поддержка нескольких вариантов через ":" и игнор пунктуации */
+/* Поддержка нескольких вариантов через ";" и игнор пунктуации */
 function evaluate(userAnswer, correctAnswer, item) {
     const cleaned = (userAnswer || '').replace(/\*/g, '');
     const u = normalize(cleaned, currentLanguage);
