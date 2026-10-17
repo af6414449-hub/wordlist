@@ -155,10 +155,13 @@ const LEVELS_BY_LANG = {
     zh: [
         { code: 'HSK1_ZH', label: 'HSK1 汉字', enabled: true  },
         { code: 'HSK1_RU', label: 'HSK1 词义', enabled: true  },
+        { code: 'HSK1_YI', label: 'HSK1 俄译', enabled: true  },
         { code: 'HSK2_ZH', label: 'HSK2 汉字', enabled: true  },
         { code: 'HSK2_RU', label: 'HSK2 词义', enabled: true  },
+        { code: 'HSK2_YI', label: 'HSK2 俄译', enabled: true  },
         { code: 'HSK3_ZH', label: 'HSK3 汉字', enabled: false },
         { code: 'HSK3_RU', label: 'HSK3 词义', enabled: false },
+        { code: 'HSK3_YI', label: 'HSK3 俄译', enabled: false },
     ],
 };
 
@@ -175,10 +178,13 @@ const levelColors = {
     C2: '#3f4145',
     HSK1_ZH: '#c0392b',
     HSK1_RU: '#8e44ad',
+    HSK1_YI: '#27ae60',
     HSK2_ZH: '#c0392b',
     HSK2_RU: '#8e44ad',
+    HSK2_YI: '#27ae60',
     HSK3_ZH: '#3f4145',
     HSK3_RU: '#3f4145',
+    HSK3_YI: '#3f4145',
 };
 
 const BANKS = {
@@ -197,8 +203,10 @@ const BANKS = {
     zh: {
         HSK1_ZH: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
         HSK1_RU: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
+        HSK1_YI: typeof WORDS_ZH_HSK1 !== 'undefined' ? WORDS_ZH_HSK1 : null,
         HSK2_ZH: typeof WORDS_ZH_HSK2 !== 'undefined' ? WORDS_ZH_HSK2 : null,
         HSK2_RU: typeof WORDS_ZH_HSK2 !== 'undefined' ? WORDS_ZH_HSK2 : null,
+        HSK2_YI: typeof WORDS_ZH_HSK2 !== 'undefined' ? WORDS_ZH_HSK2 : null,
     },
 };
 
@@ -210,10 +218,30 @@ function hasBank(level) {
     return hasBankInLang(currentLanguage, level);
 }
 
-/* Для китайского: ru — то, что показывается в check-img (иероглиф или перевод),
-   zh — иероглиф (всегда), py — пиньинь с тонами, tr — перевод (всегда).
-   На тренировке faceSquare всегда = иероглиф + пиньинь, namePlate = перевод. */
+/* Режимы китайского:
+   ZH — показ иероглиф + пиньинь, ввод пиньинь
+   RU — показ перевод, ввод пиньинь
+   YI — показ иероглиф, ввод русский перевод
+*/
+function zhMode(level) {
+    if (!level) return null;
+    if (level.endsWith('_ZH')) return 'ZH';
+    if (level.endsWith('_RU')) return 'RU';
+    if (level.endsWith('_YI')) return 'YI';
+    return null;
+}
+
 function adaptZhBank(bank, mode) {
+    if (mode === 'YI') {
+        return bank.map(w => ({
+            en: w.ru,        // ввод — русский перевод
+            ru: w.zh,        // показ — иероглиф
+            zh: w.zh,
+            py: w.py,
+            tr: w.ru,
+            ex: ''
+        }));
+    }
     return bank.map(w => ({
         en: w.pyPlain,
         ru: (mode === 'RU') ? w.ru : w.zh,
@@ -231,8 +259,8 @@ function getBank(level) {
 
     if (currentLanguage !== 'zh') return bank;
 
-    if (level === 'HSK1_ZH' || level === 'HSK2_ZH') return adaptZhBank(bank, 'ZH');
-    if (level === 'HSK1_RU' || level === 'HSK2_RU') return adaptZhBank(bank, 'RU');
+    const m = zhMode(level);
+    if (m) return adaptZhBank(bank, m);
 
     return bank;
 }
@@ -387,10 +415,20 @@ function shuffle(arr) {
     return a;
 }
 
+function isZhYiLevel() {
+    return currentLanguage === 'zh' && zhMode(currentLevel) === 'YI';
+}
+
 function normalize(s, lang) {
     let v = (s || '');
 
     if (lang === 'zh') {
+        // для *_YI — нормализуем русский, иначе — латиницу
+        if (isZhYiLevel()) {
+            return v.toLowerCase()
+                .replace(/ё/g, 'е')
+                .replace(/[^a-zа-я]/g, '');
+        }
         return v.toLowerCase().replace(/[^a-z]/g, '');
     }
 
@@ -443,6 +481,12 @@ function levenshtein(a, b) {
     return dp[m][n];
 }
 
+function allowedTyposForYi(cLen) {
+    if (cLen <= 3) return 0;
+    if (cLen <= 6) return 1;
+    return 2;
+}
+
 function evaluate(userAnswer, correctAnswer, item) {
     const cleaned = (userAnswer || '').replace(/\*/g, '');
     const u = normalize(cleaned, currentLanguage);
@@ -450,12 +494,17 @@ function evaluate(userAnswer, correctAnswer, item) {
     if (!u) return 'wrong';
     if (u === c) return 'correct';
 
-    if (currentLanguage === 'zh' && item && item.zh && userAnswer.trim() === item.zh) {
+    // для китайского: если ввели иероглиф, а ответ — пиньинь (не *_YI) — correct
+    if (currentLanguage === 'zh' && !isZhYiLevel() && item && item.zh && userAnswer.trim() === item.zh) {
         return 'correct';
     }
 
     const dist = levenshtein(u, c);
-    const allowed = Math.max(1, Math.round(c.length * 0.1));
+    const allowed = isZhYiLevel()
+        ? allowedTyposForYi(c.length)
+        : Math.max(1, Math.round(c.length * 0.1));
+
+    if (allowed === 0) return 'wrong';
     return dist <= allowed ? 'close' : 'wrong';
 }
 
@@ -773,6 +822,8 @@ function renderHome() {
         if (first) currentLevel = first.code;
     }
 
+    const isZh = currentLanguage === 'zh';
+
     const tilesHtml = levelsFor(currentLanguage).map(lvl => {
         const bankExists = hasBankInLang(currentLanguage, lvl.code);
         const isActive = lvl.code === currentLevel && bankExists;
@@ -788,11 +839,10 @@ function renderHome() {
             countText = '0 / ' + b.length;
         }
 
-        const isZhTile = currentLanguage === 'zh';
-        if (isZhTile) cls.push('tile-zh');
+        if (isZh) cls.push('tile-zh');
 
         let inner;
-        if (isZhTile && lvl.label) {
+        if (isZh && lvl.label) {
             const parts = lvl.label.split(' ');
             const line1 = parts[0] || '';
             const line2 = parts.slice(1).join(' ') || '';
@@ -809,7 +859,7 @@ function renderHome() {
 
     view.innerHTML = `
         <div class="home-dark">
-            <div class="levels-board" id="levelsBoard">
+            <div class="levels-board${isZh ? ' zh' : ''}" id="levelsBoard">
                 ${tilesHtml}
             </div>
             <button class="start-bar" id="startBtn">
@@ -1005,7 +1055,7 @@ function updateTrainCard() {
     if (!fs || !np) return;
 
     if (currentLanguage === 'zh') {
-        // Всегда: faceSquare = иероглиф + пиньинь, namePlate = перевод
+        // на тренировке для всех трёх режимов: иероглиф + пиньинь + перевод
         fs.innerHTML = `
             <span class="fs-zh">${w.zh || ''}</span>
             <span class="fs-py">${w.py || ''}</span>
@@ -1083,6 +1133,16 @@ function renderCheck() {
     updateHeader();
 }
 
+/* Что показывать на проверке */
+function checkPrompt(item) {
+    if (currentLanguage !== 'zh') return item.ru;
+
+    const m = zhMode(currentLevel);
+    if (m === 'YI') return item.zh;       // только иероглиф, без пиньиня
+    if (m === 'RU') return item.ru;       // перевод
+    return item.zh;                        // ZH — иероглиф
+}
+
 /* ---------- Режим "Все" (сетка) ---------- */
 function renderCheckAll() {
     const hintsOn = loadHints();
@@ -1095,9 +1155,7 @@ function renderCheckAll() {
         const current  = (i === currentPerson) ? ' current' : '';
         const hintMode = (hintsOn || lengthOn);
 
-        const prompt = (currentLanguage === 'zh' && item.zh && item.ru === item.zh)
-            ? item.zh
-            : item.ru;
+        const prompt = checkPrompt(item);
 
         return `
             <div class="check-cell${current}" data-index="${i}">
@@ -1152,9 +1210,7 @@ function renderCheckOne() {
     const inputCls = 'check-input check-input-one';
     const hintMode = (loadHints() || loadLength());
 
-    const prompt = (currentLanguage === 'zh' && item.zh && item.ru === item.zh)
-        ? item.zh
-        : item.ru;
+    const prompt = checkPrompt(item);
 
     view.innerHTML = `
         <div class="train-screen">
@@ -1539,7 +1595,7 @@ function renderResults() {
         let firstCol, correctDisplay;
         if (currentLanguage === 'zh') {
             firstCol = item.zh || item.ru;
-            correctDisplay = item.py || item.en;
+            correctDisplay = isZhYiLevel() ? (item.tr || item.en) : (item.py || item.en);
         } else {
             firstCol = item.ru;
             correctDisplay = item.en;
@@ -1670,15 +1726,28 @@ async function showHistoryEntry(historyIndex) {
         const userAns = it.userAnswer || '';
         const lang = snap.lang;
         const cleaned = userAns.replace(/\*/g, '');
-        const u = normalize(cleaned, lang);
-        const c = normalize(it.en, lang);
+
         let verdict;
-        if (!u) verdict = 'wrong';
-        else if (u === c) verdict = 'correct';
-        else {
-            const dist = levenshtein(u, c);
-            const allowed = Math.max(1, Math.round(c.length * 0.1));
-            verdict = dist <= allowed ? 'close' : 'wrong';
+        if (snap.lang === 'zh' && snap.level && snap.level.endsWith('_YI')) {
+            const u = normalize(cleaned, 'zh');
+            const c = normalize(it.en, 'zh');
+            if (!u) verdict = 'wrong';
+            else if (u === c) verdict = 'correct';
+            else {
+                const dist = levenshtein(u, c);
+                const allowed = allowedTyposForYi(c.length);
+                verdict = (allowed > 0 && dist <= allowed) ? 'close' : 'wrong';
+            }
+        } else {
+            const u = normalize(cleaned, lang);
+            const c = normalize(it.en, lang);
+            if (!u) verdict = 'wrong';
+            else if (u === c) verdict = 'correct';
+            else {
+                const dist = levenshtein(u, c);
+                const allowed = Math.max(1, Math.round(c.length * 0.1));
+                verdict = dist <= allowed ? 'close' : 'wrong';
+            }
         }
 
         if (verdict === 'correct') correct++;
@@ -1692,7 +1761,9 @@ async function showHistoryEntry(historyIndex) {
         let firstCol, correctDisplay;
         if (snap.lang === 'zh') {
             firstCol = it.zh || it.ru;
-            correctDisplay = it.py || it.en;
+            correctDisplay = (snap.level && snap.level.endsWith('_YI'))
+                ? (it.tr || it.en)
+                : (it.py || it.en);
         } else {
             firstCol = it.ru;
             correctDisplay = it.en;
