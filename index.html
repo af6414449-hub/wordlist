@@ -101,7 +101,6 @@
         .lang-badge:hover  { filter: brightness(1.1); }
         .lang-badge:active { transform: scale(0.94); }
 
-        /* Увеличенная плашка для китайского */
         .lang-badge.lang-zh {
             font-size: 26px;
             min-width: 160px;
@@ -317,6 +316,13 @@
             padding: 8px;
             min-height: 0;
         }
+
+        /* Для китайского — 3x3 */
+        .levels-board.zh {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+
         .level-tile {
             position: relative;
             border: none;
@@ -364,8 +370,10 @@
         /* Китайские плитки */
         .level-tile[data-level="HSK1_ZH"]:not(.disabled) { background: #c0392b; }
         .level-tile[data-level="HSK1_RU"]:not(.disabled) { background: #8e44ad; }
+        .level-tile[data-level="HSK1_YI"]:not(.disabled) { background: #27ae60; }
         .level-tile[data-level="HSK2_ZH"]:not(.disabled) { background: #c0392b; }
         .level-tile[data-level="HSK2_RU"]:not(.disabled) { background: #8e44ad; }
+        .level-tile[data-level="HSK2_YI"]:not(.disabled) { background: #27ae60; }
 
         .level-tile.disabled {
             background: #232426;
@@ -374,28 +382,27 @@
             opacity: 0.35;
         }
 
-        /* Уменьшенный шрифт для длинных надписей HSK */
         .level-tile.tile-zh {
-            font-size: clamp(20px, 3.6vw, 38px);
+            font-size: clamp(18px, 3vw, 34px);
             letter-spacing: 0;
             flex-direction: column;
             gap: 0.15em;
         }
         .level-tile.tile-zh .tile-zh-line1 {
-            font-size: 0.75em;
+            font-size: 0.7em;
             font-weight: 700;
             opacity: 0.85;
         }
         .level-tile.tile-zh .tile-zh-line2 {
-            font-size: 1.15em;
+            font-size: 1.1em;
             font-weight: 800;
         }
 
         .level-tile .tile-count {
             position: absolute;
-            bottom: 14px;
-            right: 18px;
-            font-size: 14px;
+            bottom: 12px;
+            right: 14px;
+            font-size: 13px;
             font-weight: 700;
             letter-spacing: 0.06em;
             opacity: 0.9;
@@ -428,7 +435,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 16vh;
+            min-height: 14vh;
             transition: transform 0.1s, box-shadow 0.2s;
             position: relative;
             overflow: hidden;
@@ -519,7 +526,7 @@
         .size-btn:hover { background: #3498db; }
         .size-btn:active { transform: scale(0.97); }
 
-        /* ===== Тренировка / проверка (в стиле первой страницы) ===== */
+        /* ===== Тренировка / проверка ===== */
         .train-screen {
             display: flex; flex-direction: column; gap: 10px;
             flex: 1 1 auto; min-height: 0;
@@ -676,7 +683,6 @@
             letter-spacing: 0.02em;
         }
 
-        /* Проверка «все» */
         .check-area {
             flex: 1 1 auto; min-height: 0;
             padding: 1em;
@@ -732,7 +738,6 @@
         .check-input.wrong   { background: #e74c3c; color: #fff; font-weight: 700; border-color: #c0392b; }
         .check-input:disabled { cursor: default; }
 
-        /* Проверка «по одной» */
         .check-input-one {
             width: 80%; max-width: 560px; min-width: 0;
             height: 52px; font-size: 20px; font-weight: 700;
