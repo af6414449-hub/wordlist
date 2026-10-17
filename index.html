@@ -238,7 +238,14 @@
             .timer { font-size: 14px; }
             .timer b { font-size: 18px; min-width: 2.4em; }
 
-            .finish-btn { padding: 0.55em 1.4em; font-size: 17px; }
+            /* Кнопка Завершить / Продолжить — справа сверху */
+            .topbar-inner.mode-train .center-slot {
+                left: auto;
+                right: 0.6em;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+            .finish-btn { padding: 0.55em 1.2em; font-size: 15px; }
         }
 
         @media (max-width: 560px) {
@@ -259,7 +266,8 @@
             .timer b { font-size: 15px; min-width: 2.2em; }
 
             .center-slot { gap: 0.3em; }
-            .finish-btn { padding: 0.45em 1em; font-size: 15px; }
+            .topbar-inner.mode-train .center-slot { right: 0.5em; }
+            .finish-btn { padding: 0.45em 0.9em; font-size: 14px; }
         }
 
         @media (max-width: 400px) {
@@ -317,7 +325,6 @@
             min-height: 0;
         }
 
-        /* Для китайского — 3x3 */
         .levels-board.zh {
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
@@ -367,7 +374,6 @@
         .level-tile[data-level="B1"]:not(.disabled) { background: #f5c518; color: #1b1c1d; }
         .level-tile[data-level="B2"]:not(.disabled) { background: #2ecc71; }
 
-        /* Китайские плитки */
         .level-tile[data-level="HSK1_ZH"]:not(.disabled) { background: #c0392b; }
         .level-tile[data-level="HSK1_RU"]:not(.disabled) { background: #8e44ad; }
         .level-tile[data-level="HSK1_YI"]:not(.disabled) { background: #27ae60; }
